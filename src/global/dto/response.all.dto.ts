@@ -12,8 +12,8 @@ export class ResponseAllDto<T> {
   readonly totalPages: number;
 
   @IsNumber()
-  readonly currentPage: number;
+  readonly page: number;
 
   @IsNumber()
-  readonly pageSize: number;
+  readonly limit: number;
 }

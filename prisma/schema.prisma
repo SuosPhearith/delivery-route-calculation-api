@@ -32,6 +32,9 @@ model User {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   UserSession UserSession[]
+  Truck       Truck[]
+  Driver      Driver?
+  Assistant   Assistant?
 }
 
 model UserSession {
@@ -43,4 +46,110 @@ model UserSession {
   createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LicenseType {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  Driver      Driver[]
+}
+
+enum DriverStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+model Assistant {
+  id             Int              @id @default(autoincrement())
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int              @unique
+  phone          String
+  age            Int?
+  status         DriverStatus     @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  TruckAssistant TruckAssistant[]
+}
+
+model Driver {
+  id            Int          @id @default(autoincrement())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int          @unique
+  phone         String
+  age           Int?
+  licenseId     String       @unique
+  licenseType   LicenseType  @relation(fields: [licenseTypeId], references: [id])
+  licenseTypeId Int
+  status        DriverStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  Truck         Truck[]
+}
+
+model Fuel {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String
+  Truck       Truck[]
+}
+
+model TruckSize {
+  id              Int     @id @default(autoincrement())
+  name            String
+  containerLenght Float
+  containerWeight Float
+  containerHeight Float
+  containerCubic  Float
+  Truck           Truck[]
+}
+
+model CaseSize {
+  id         Int    @id @default(autoincrement())
+  name       String
+  caseLenght Float
+  caseWeight Float
+  caseHeight Float
+  caseCubic  Float
+}
+
+enum TruckStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+}
+
+model Truck {
+  id             Int              @id @default(autoincrement())
+  truckSize      TruckSize        @relation(fields: [truckSizeId], references: [id])
+  truckSizeId    Int
+  fuel           Fuel             @relation(fields: [fuelId], references: [id])
+  fuelId         Int
+  driver         Driver           @relation(fields: [driverId], references: [id])
+  licensePlate   String           @unique
+  model          String?
+  manufacturer   String?
+  status         TruckStatus      @default(AVAILABLE)
+  driverId       Int
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  createdBy      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId         Int?
+  TruckAssistant TruckAssistant[]
+}
+
+model TruckAssistant {
+  id          Int       @id @default(autoincrement())
+  truck       Truck     @relation(fields: [truckId], references: [id])
+  truckId     Int
+  assisant    Assistant @relation(fields: [assistantId], references: [id])
+  assistantId Int
+}
+
+model System {
+  id              Int   @id @default(autoincrement())
+  speed           Float @default(40)
+  dropOffDuration Int   @default(2)
 }

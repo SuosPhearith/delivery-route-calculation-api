@@ -20,6 +20,7 @@ async function main() {
   await prisma.userSession.deleteMany();
   await prisma.user.deleteMany();
   await prisma.role.deleteMany();
+  await prisma.assistant.deleteMany();
   //::================================================================================::
 
   //::================================>>Start seed<<==================================::
