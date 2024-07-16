@@ -12,6 +12,7 @@ import { AssistantService } from './assistant.service';
 import { CreateAssistantDto } from './dto/create-assistant.dto';
 import { UpdateAssistantDto } from './dto/update-assistant.dto';
 import { FilterDto } from './dto/filter-dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('api/v1/assistant')
 export class AssistantController {
@@ -44,6 +45,14 @@ export class AssistantController {
   @Patch(':id/toggle-active')
   async toggle(@Param('id') id: string) {
     return this.assistantService.toggle(+id);
+  }
+
+  @Patch(':id/reset-password')
+  async reset(
+    @Param('id') id: string,
+    @Body() resetPassword: ResetPasswordDto,
+  ) {
+    return this.assistantService.reset(+id, resetPassword);
   }
 
   @Delete(':id')

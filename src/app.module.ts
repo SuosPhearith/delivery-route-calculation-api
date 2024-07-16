@@ -8,9 +8,10 @@ import { JwtService } from './auth/jwt.service';
 import { FileUploadModule } from './file/file-upload.module';
 import { LicenseModule } from './resource/driver/license/license.module';
 import { AssistantModule } from './resource/driver/assistant/assistant.module';
+import { DriverModule } from './resource/driver/driver/driver.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule],
+  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule, DriverModule],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],
 })

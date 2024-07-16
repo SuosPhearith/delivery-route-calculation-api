@@ -5,47 +5,65 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateAssistantDto } from './dto/create-assistant.dto';
-import { UpdateAssistantDto } from './dto/update-assistant.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateDriverDto } from './dto/create-driver.dto';
+import { UpdateDriverDto } from './dto/update-driver.dto';
 import { ResponseCreateOrUpdateDTO } from 'src/global/dto/response.create.update.dto';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { Role } from 'src/global/enum/role.enum';
-import { ResponseAllDto } from 'src/global/dto/response.all.dto';
 import { DriverStatus } from 'src/resource/enums/driver-status.enum';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ResponseAllDto } from 'src/global/dto/response.all.dto';
+import { ResetPasswordDto } from '../assistant/dto/reset-password.dto';
 
 @Injectable()
-export class AssistantService {
+export class DriverService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Create a new assistant
+  // Create a new driver
   async create(
-    createAssistantDto: CreateAssistantDto,
+    createDrivertDto: CreateDriverDto,
   ): Promise<ResponseCreateOrUpdateDTO> {
     try {
-      const { name, email, password, gender, phone, age } = createAssistantDto;
+      const {
+        name,
+        email,
+        password,
+        gender,
+        phone,
+        age,
+        licenseId,
+        licenseTypeId,
+      } = createDrivertDto;
+      // Check licenseTypeId
+      const isLicenseTypeId = await this.prisma.licenseType.findUnique({
+        where: { id: licenseTypeId },
+      });
+      if (!isLicenseTypeId) {
+        throw new NotFoundException();
+      }
       // Hash the password before storing it
       const hashedPassword = await bcrypt.hash(password, 10);
-      // Create a new assistant user in the database
-      const assistant = await this.prisma.user.create({
+      // Create a new driver user in the database
+      const driver = await this.prisma.user.create({
         data: {
           name,
           email,
           password: hashedPassword,
-          roleId: Role.assistant,
+          roleId: Role.driver,
           gender: gender,
-          Assistant: {
+          Driver: {
             create: {
-              phone: phone,
-              age: age,
+              phone,
+              age,
+              licenseId,
+              licenseTypeId,
             },
           },
         },
       });
-      delete assistant.password; // Remove sensitive data from the response
+      delete driver.password; // Remove sensitive data from the response
       return {
-        data: assistant,
+        data: driver,
         message: 'Created successfully',
         statusCode: HttpStatus.CREATED,
       };
@@ -58,7 +76,7 @@ export class AssistantService {
     }
   }
 
-  // Find all assistants based on query parameters
+  // Find all drivers based on query parameters
   async findAll(
     query: string,
     page: number,
@@ -66,7 +84,7 @@ export class AssistantService {
     status: DriverStatus,
   ): Promise<ResponseAllDto<any>> {
     const skip = (page - 1) * limit;
-    const baseWhere = { roleId: Role.assistant };
+    const baseWhere = { roleId: Role.driver };
 
     let where: any = {
       ...baseWhere,
@@ -85,8 +103,8 @@ export class AssistantService {
     if (status) {
       where = {
         ...where,
-        Assistant: {
-          status: status,
+        Driver: {
+          status,
         },
       };
     }
@@ -96,7 +114,7 @@ export class AssistantService {
         this.prisma.user.findMany({
           where,
           include: {
-            Assistant: true,
+            Driver: true,
           },
           skip,
           take: limit,
@@ -120,36 +138,51 @@ export class AssistantService {
     }
   }
 
-  // Find a specific assistant by ID
+  // Find a specific driver by ID
   async findOne(id: number) {
     try {
-      const isAssistant = await this.prisma.user.findUnique({
-        where: { id, roleId: Role.assistant },
+      const isDriver = await this.prisma.user.findUnique({
+        where: { id, roleId: Role.driver },
         include: {
-          Assistant: true,
+          Driver: true,
         },
       });
-      if (!isAssistant) {
-        throw new NotFoundException(); // Throw a 404 error if assistant not found
+      if (!isDriver) {
+        throw new NotFoundException(); // Throw a 404 error if driver not found
       }
-      delete isAssistant.password; // Remove sensitive data from the response
-      return isAssistant;
+      delete isDriver.password; // Remove sensitive data from the response
+      return isDriver;
     } catch (error) {
       throw error; // Re-throw any errors
     }
   }
 
-  // Update an existing assistant
+  // Update an existing driver
   async update(
     id: number,
-    updateAssistantDto: UpdateAssistantDto,
+    updateDriverDto: UpdateDriverDto,
   ): Promise<ResponseCreateOrUpdateDTO> {
     try {
-      const isUser = await this.findOne(id); // Check if assistant exists
-      const { name, email, gender, phone, age, status } = updateAssistantDto;
-
-      // Update assistant details in the database
-      const assistant = await this.prisma.user.update({
+      const isUser = await this.findOne(id); // Check if driver exists
+      const {
+        name,
+        email,
+        gender,
+        phone,
+        age,
+        status,
+        licenseId,
+        licenseTypeId,
+      } = updateDriverDto;
+      // Check licenseTypeId
+      const isLicenseTypeId = await this.prisma.licenseType.findUnique({
+        where: { id: licenseTypeId },
+      });
+      if (!isLicenseTypeId) {
+        throw new NotFoundException();
+      }
+      // Update driver details in the database
+      const driver = await this.prisma.user.update({
         where: {
           id: isUser.id,
         },
@@ -157,29 +190,33 @@ export class AssistantService {
           name,
           email,
           gender,
-          Assistant: {
+          Driver: {
             upsert: {
               create: {
                 phone: phone,
                 age: age,
                 status: status,
+                licenseId,
+                licenseTypeId,
               },
               update: {
                 phone: phone,
                 age: age,
                 status: status,
+                licenseId,
+                licenseTypeId,
               },
             },
           },
         },
         include: {
-          Assistant: true,
+          Driver: true,
         },
       });
 
-      delete assistant.password; // Remove sensitive data from the response
+      delete driver.password; // Remove sensitive data from the response
       return {
-        data: assistant,
+        data: driver,
         message: 'Updated successfully',
         statusCode: HttpStatus.OK,
       };
@@ -192,11 +229,11 @@ export class AssistantService {
     }
   }
 
-  // Remove an assistant
+  // Remove an driver
   async remove(id: number) {
     try {
-      const isAssistant = await this.findOne(id); // Check if assistant exists
-      await this.prisma.user.delete({ where: { id: isAssistant.id } }); // Delete assistant from the database
+      const isDriver = await this.findOne(id); // Check if driver exists
+      await this.prisma.user.delete({ where: { id: isDriver.id } }); // Delete driver from the database
       return {
         message: 'Deleted successfully',
         statusCode: HttpStatus.OK,
@@ -206,16 +243,16 @@ export class AssistantService {
     }
   }
 
-  // Toggle active assistant account
+  // Toggle active driver account
   async toggle(id: number) {
     try {
-      const isAssistant = await this.findOne(id); // Check if assistant exists
+      const isDriver = await this.findOne(id); // Check if driver exists
       let active: boolean;
-      isAssistant.status ? (active = false) : (active = true);
+      isDriver.status ? (active = false) : (active = true);
       await this.prisma.user.update({
-        where: { id: isAssistant.id },
+        where: { id: isDriver.id },
         data: { status: active },
-      }); // Delete assistant from the database
+      }); // Delete driver from the database
       return {
         message: 'Updated successfully',
         statusCode: HttpStatus.OK,
@@ -225,19 +262,19 @@ export class AssistantService {
     }
   }
 
-  // Reset password assistant account
+  // Reset password driver account
   async reset(id: number, resetPassword: ResetPasswordDto) {
     try {
-      const isAssistant = await this.findOne(id); // Check if assistant exists
+      const isDriver = await this.findOne(id); // Check if driver exists
       const { password, confirmPassword } = resetPassword;
       if (password !== confirmPassword) {
         throw new BadRequestException('Check your confirm password');
       }
       const hashedPassword = await bcrypt.hash(password, 10);
       await this.prisma.user.update({
-        where: { id: isAssistant.id },
+        where: { id: isDriver.id },
         data: { password: hashedPassword },
-      }); // Delete assistant from the database
+      });
       return {
         message: 'Updated successfully',
         statusCode: HttpStatus.OK,
