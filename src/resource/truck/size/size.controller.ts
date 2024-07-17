@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { SizeService } from './size.service';
 import { CreateSizeDto } from './dto/create-size.dto';
@@ -29,17 +30,20 @@ export class SizeController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.sizeService.findOne(+id);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateSizeDto: UpdateSizeDto) {
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSizeDto: UpdateSizeDto,
+  ) {
     return this.sizeService.update(+id, updateSizeDto);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id', ParseIntPipe) id: number) {
     return this.sizeService.remove(+id);
   }
 }

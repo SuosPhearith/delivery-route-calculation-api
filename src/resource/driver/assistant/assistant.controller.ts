@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { AssistantService } from './assistant.service';
 import { CreateAssistantDto } from './dto/create-assistant.dto';
@@ -30,33 +31,33 @@ export class AssistantController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.assistantService.findOne(+id);
   }
 
   @Patch(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateAssistantDto: UpdateAssistantDto,
   ) {
     return this.assistantService.update(+id, updateAssistantDto);
   }
 
   @Patch(':id/toggle-active')
-  async toggle(@Param('id') id: string) {
+  async toggle(@Param('id', ParseIntPipe) id: number) {
     return this.assistantService.toggle(+id);
   }
 
   @Patch(':id/reset-password')
   async reset(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() resetPassword: ResetPasswordDto,
   ) {
     return this.assistantService.reset(+id, resetPassword);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id', ParseIntPipe) id: number) {
     return this.assistantService.remove(+id);
   }
 }
