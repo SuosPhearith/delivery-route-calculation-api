@@ -98,7 +98,7 @@ model Fuel {
 
 model TruckSize {
   id              Int     @id @default(autoincrement())
-  name            String
+  name            String  @unique
   containerLenght Float
   containerWeight Float
   containerHeight Float

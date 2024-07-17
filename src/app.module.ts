@@ -9,9 +9,10 @@ import { FileUploadModule } from './file/file-upload.module';
 import { LicenseModule } from './resource/driver/license/license.module';
 import { AssistantModule } from './resource/driver/assistant/assistant.module';
 import { DriverModule } from './resource/driver/driver/driver.module';
+import { SizeModule } from './resource/truck/size/size.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule, DriverModule],
+  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule, DriverModule, SizeModule],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],
 })

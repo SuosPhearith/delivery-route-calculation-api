@@ -28,7 +28,7 @@ export class LicenseService {
   async findAll(page: number, limit: number): Promise<ResponseAllDto<any>> {
     try {
       const skip = (page - 1) * limit;
-      const [products, total] = await this.prisma.$transaction([
+      const [data, total] = await this.prisma.$transaction([
         this.prisma.licenseType.findMany({
           skip,
           take: limit,
@@ -38,7 +38,7 @@ export class LicenseService {
       ]);
 
       return {
-        data: products,
+        data: data,
         totalCount: total,
         totalPages: Math.ceil(total / limit),
         page,

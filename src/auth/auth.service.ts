@@ -51,8 +51,9 @@ export class AuthService {
       //check if duplicate
       if (error.code === 'P2002') {
         throw new ConflictException('Email already exists');
+      } else {
+        throw error;
       }
-      throw error;
     }
   }
 
