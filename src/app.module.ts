@@ -11,9 +11,10 @@ import { AssistantModule } from './resource/driver/assistant/assistant.module';
 import { DriverModule } from './resource/driver/driver/driver.module';
 import { SizeModule } from './resource/truck/size/size.module';
 import { FuelModule } from './resource/truck/fuel/fuel.module';
+import { CaseModule } from './resource/case/case.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule, DriverModule, SizeModule, FuelModule],
+  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule, DriverModule, SizeModule, FuelModule, CaseModule],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],
 })

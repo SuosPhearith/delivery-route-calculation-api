@@ -108,7 +108,7 @@ model TruckSize {
 
 model CaseSize {
   id         Int    @id @default(autoincrement())
-  name       String
+  name       String @unique
   caseLenght Float
   caseWeight Float
   caseHeight Float
