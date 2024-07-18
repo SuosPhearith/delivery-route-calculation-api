@@ -12,9 +12,10 @@ import { DriverModule } from './resource/driver/driver/driver.module';
 import { SizeModule } from './resource/truck/size/size.module';
 import { FuelModule } from './resource/truck/fuel/fuel.module';
 import { CaseModule } from './resource/case/case.module';
+import { KeycloakModule } from './keycloak/keycloak.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule, DriverModule, SizeModule, FuelModule, CaseModule],
+  imports: [ConfigModule.forRoot(), AuthModule, FileUploadModule, LicenseModule, AssistantModule, DriverModule, SizeModule, FuelModule, CaseModule, KeycloakModule],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],
 })
