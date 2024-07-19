@@ -23,7 +23,7 @@ import { KeycloakRolesBase } from 'src/global/enum/keycloak.role.enum';
 export class SizeController {
   constructor(private readonly sizeService: SizeService) {}
 
-  @KeycloakRoles(KeycloakRolesBase.ADMIN, KeycloakRolesBase.MANAGER)
+  @KeycloakRoles(KeycloakRolesBase.MANAGER)
   @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   @Post()
   async create(@Body() createSizeDto: CreateSizeDto) {

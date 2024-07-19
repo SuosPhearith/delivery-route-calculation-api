@@ -89,6 +89,22 @@ model Driver {
   Truck         Truck[]
 }
 
+enum KeycloakAccountRole {
+  admin
+  manager
+  driver
+  assisant
+}
+
+model KeycloakAccount {
+  id        Int                 @id @default(autoincrement())
+  email     String              @unique
+  username  String              @unique
+  name      String
+  client_id String
+  Role      KeycloakAccountRole
+}
+
 model Fuel {
   id          Int     @id @default(autoincrement())
   name        String  @unique
