@@ -36,7 +36,11 @@ export class KeycloakService {
         response.data?.access_token,
       );
       const { username, email: uniqueEmail, client_id, name } = userData;
-      const role = userData.realm_access.roles.at(0);
+      // Extract relevant roles from the response
+      const relevantRoles = this.getRelevantRoles(userData.realm_access.roles);
+      const role = relevantRoles.at(0);
+
+      // return userData;
 
       // Upsert user data in the database
       const savedUser = await this.prisma.keycloakAccount.upsert({
@@ -62,17 +66,29 @@ export class KeycloakService {
       }
 
       // Return token response from Keycloak
-      return response.data;
-    } catch (error) {
+      const responseToken = { ...response.data, role };
+      return responseToken;
+    } catch (error: any) {
       // Handle errors based on status code
-      if (error.response.status === 401) {
+      if (error?.response?.status === 401) {
         throw new BadRequestException('Invalid email or password');
-      } else if (error.response.status === 400) {
+      } else if (error?.response?.status === 400) {
         throw new BadRequestException();
       } else {
         throw error;
       }
     }
+  }
+
+  // Function to get relevant roles
+  getRelevantRoles(roles: string[]): KeycloakAccountRole[] {
+    // Convert enum values to an array for comparison
+    const keycloakAccountRoles = Object.values(KeycloakAccountRole);
+    return roles
+      .filter((role) =>
+        keycloakAccountRoles.includes(role as KeycloakAccountRole),
+      )
+      .map((role) => role as KeycloakAccountRole);
   }
 
   // Method to refresh the access token
@@ -93,11 +109,11 @@ export class KeycloakService {
 
       // Return refreshed token response from Keycloak
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       // Handle errors based on status code
-      if (error.response.status === 401) {
+      if (error?.response?.status === 401) {
         throw new BadRequestException('Invalid email or password');
-      } else if (error.response.status === 400) {
+      } else if (error?.response?.status === 400) {
         throw new BadRequestException();
       } else {
         throw error;
@@ -120,7 +136,17 @@ export class KeycloakService {
         },
       });
 
-      // Return user data from Keycloak introspection endpoint
+      // Extract relevant roles from the response
+      if (response.data.realm_access) {
+        const relevantRoles = this.getRelevantRoles(
+          response.data.realm_access?.roles,
+        );
+        const role = relevantRoles.at(0);
+        // Return user data from Keycloak introspection endpoint
+        const responseToken = { ...response.data, role };
+        return responseToken;
+      }
+
       return response.data;
     } catch (error) {
       throw error;
@@ -174,9 +200,9 @@ export class KeycloakService {
 
       // Return decoded token data
       return decoded;
-    } catch (error) {
+    } catch (error: any) {
       // Handle verification errors
-      if (error.message) {
+      if (error?.message) {
         throw new BadRequestException(error.message);
       } else {
         throw error;

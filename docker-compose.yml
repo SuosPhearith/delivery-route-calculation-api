@@ -14,6 +14,32 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cache-net
+
+  #::======================================================>> Redis
+  redis:
+    image: redis:6.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cache-net
+
+  #::======================================================>> OSM
+  osrm:
+    image: osrm/osrm-backend
+    container_name: osrm-backend
+    volumes:
+      - ./data:/data
+    ports:
+      - "5000:5000"
+    command: >
+      osrm-routed --algorithm mld /data/cambodia-latest.osrm
 
 volumes:
   postgres_data:
+
+networks:
+  cache-net:
+    driver: bridge

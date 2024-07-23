@@ -11,7 +11,10 @@ import { ResponseCreateOrUpdateDTO } from 'src/global/dto/response.create.update
 
 @Injectable() // Marks this class as a provider that can be injected into other classes
 export class SizeService {
-  constructor(private readonly prisma: PrismaService) {} // Injects the PrismaService to interact with the database
+  constructor(
+    private readonly prisma: PrismaService,
+    // @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {} // Injects the PrismaService to interact with the database
 
   // Method to create a new truck size
   async create(
@@ -90,6 +93,7 @@ export class SizeService {
       if (!truckSize) {
         throw new NotFoundException(); // Throw an error if not found
       }
+      // await this.cacheManager.add('key', truckSize, { ttl: 600 });
       return truckSize;
     } catch (error) {
       throw error;

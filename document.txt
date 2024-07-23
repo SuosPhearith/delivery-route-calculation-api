@@ -1,0 +1,44 @@
+docker-compose run osrm osrm-extract -p /opt/car.lua /data/cambodia-latest.osm.pbf
+docker-compose run osrm osrm-partition /data/cambodia-latest.osrm
+docker-compose run osrm osrm-customize /data/cambodia-latest.osrm
+
+dokcer-compose up
+
+
+http://localhost:5000/route/v1/{profile}/{start_lon},{start_lat};{end_lon},{end_lat}?overview=false
+
+
+{
+    "code": "Ok",
+    "routes": [
+        {
+            "legs": [
+                {
+                    "steps": [],
+                    "distance": 314000,
+                    "duration": 14400,
+                    "summary": "",
+                    "weight": 14400
+                }
+            ],
+            "distance": 314000, // គិតជា m
+            "duration": 14400, // គិតជា s
+            "weight_name": "routability",
+            "weight": 14400
+        }
+    ],
+    "waypoints": [
+        {
+            "hint": "some_hint",
+            "distance": 10,
+            "name": "Phnom Penh",
+            "location": [104.9175, 11.5564]
+        },
+        {
+            "hint": "some_hint",
+            "distance": 10,
+            "name": "Siem Reap",
+            "location": [103.8565, 13.3621]
+        }
+    ]
+}

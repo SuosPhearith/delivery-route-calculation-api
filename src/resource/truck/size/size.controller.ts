@@ -17,13 +17,13 @@ import { PaginationDto } from 'src/global/dto/pagination.dto';
 import { KeycloakAuthenticationGuard } from 'src/keycloak/guards/keycloak-authentication/keycloak-authentication.guard';
 import { KeycloakAuthorizationGuard } from 'src/keycloak/guards/keycloak-authorization/keycloak-authorization.guard';
 import { KeycloakRoles } from 'src/keycloak/decorators/keycloak-roles/keycloak-roles.decorator';
-import { KeycloakRolesBase } from 'src/global/enum/keycloak.role.enum';
+import { KeycloakAccountRole } from '@prisma/client';
 
 @Controller('api/v1/truck-size')
 export class SizeController {
   constructor(private readonly sizeService: SizeService) {}
 
-  @KeycloakRoles(KeycloakRolesBase.MANAGER)
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
   @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   @Post()
   async create(@Body() createSizeDto: CreateSizeDto) {

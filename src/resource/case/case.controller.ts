@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { CaseService } from './case.service';
 import { CreateCaseDto } from './dto/create-case.dto';
@@ -29,17 +30,20 @@ export class CaseController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.caseService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCaseDto: UpdateCaseDto) {
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateCaseDto: UpdateCaseDto,
+  ) {
     return this.caseService.update(+id, updateCaseDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  async remove(@Param('id', ParseIntPipe) id: number) {
     return this.caseService.remove(+id);
   }
 }
