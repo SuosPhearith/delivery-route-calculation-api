@@ -11,11 +11,28 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { KeycloakAccountRole, TruckStatus } from '@prisma/client';
 import { ResponseCreateOrUpdateDTO } from 'src/global/dto/response.create.update.dto';
 import { ResponseAllDto } from 'src/global/dto/response.all.dto';
+import { ReassignAssistantDto } from './dto/reassign-assistant.dto';
+import { ReassignDriverDto } from './dto/reassign-driver.dto';
 
 // Decorator that marks the class as a provider that can be injected into other classes
 @Injectable()
 export class TruckService {
   constructor(private readonly prisma: PrismaService) {}
+
+  // Method to get all with their ids and names
+  async findAllTruckOwnershipTypes(): Promise<SelectDto[]> {
+    const truckOwnershipTypes = await this.prisma.truckOwnershipType.findMany({
+      select: { id: true, name: true },
+    });
+
+    // Transform the results into the desired format for frontend usage
+    const data = truckOwnershipTypes.map((truckOwnershipType) => ({
+      value: truckOwnershipType.id,
+      label: truckOwnershipType.name,
+    }));
+
+    return data;
+  }
 
   // Method to get all with their ids and names
   async findAllWarehouses(): Promise<SelectDto[]> {
@@ -79,29 +96,16 @@ export class TruckService {
 
   // Method to find all drivers who are not assigned to any truck
   async findAllDrivers(): Promise<SelectDto[]> {
-    // Get the IDs of drivers who are already assigned to a truck
-    const assignedDriverIds = await this.prisma.truck.findMany({
-      select: { driverId: true },
-    });
-
-    // Extract driver IDs into an array
-    const assignedDriverIdArray = assignedDriverIds.map(
-      (truck) => truck.driverId,
-    );
-
     // Fetch drivers who are not assigned to any truck
-    const availableDrivers = await this.prisma.keycloakAccount.findMany({
+    const drivers = await this.prisma.keycloakAccount.findMany({
       where: {
         Role: KeycloakAccountRole.DRIVER,
-        id: {
-          notIn: assignedDriverIdArray,
-        },
       },
       select: { id: true, name: true, email: true },
     });
 
     // Transform the results into the desired format for frontend usage
-    const response = availableDrivers.map((driver) => ({
+    const response = drivers.map((driver) => ({
       value: driver.id,
       label: `${driver.email} (${driver.name})`,
     }));
@@ -109,58 +113,139 @@ export class TruckService {
     return response;
   }
 
-  // Method to create a new truck
+  // Method to find all asssistants who are not assigned to any truck
+  async findAllAssistants(): Promise<SelectDto[]> {
+    // Fetch asssistants who are not assigned to any truck
+    const asssistants = await this.prisma.keycloakAccount.findMany({
+      where: {
+        Role: KeycloakAccountRole.ASSISTANT,
+      },
+      select: { id: true, name: true, email: true },
+    });
+
+    // Transform the results into the desired format for frontend usage
+    const response = asssistants.map((assistant) => ({
+      value: assistant.id,
+      label: `${assistant.email} (${assistant.name})`,
+    }));
+
+    return response;
+  }
+
   async create(
     createTruckDto: CreateTruckDto,
   ): Promise<ResponseCreateOrUpdateDTO> {
     try {
-      const { truckSizeId, fuelId, driverId, zoneId, warehouseId } =
-        createTruckDto;
+      const {
+        truckSizeId,
+        fuelId,
+        driver,
+        assistant,
+        zoneId,
+        warehouseId,
+        truckOwnershipTypeId,
+        licensePlate,
+        model,
+        manufacturer,
+        functioning,
+      } = createTruckDto;
 
-      // Check zone
-      const isZone = await this.prisma.zone.findUnique({
-        where: { id: zoneId },
+      // Start a transaction
+      await this.prisma.$transaction(async (prisma) => {
+        // Check if the provided driver ID exists and has the DRIVER role
+        for (const driverId of driver) {
+          const isDriverId = await prisma.keycloakAccount.findUnique({
+            where: { id: driverId, Role: KeycloakAccountRole.DRIVER },
+          });
+          if (!isDriverId) {
+            throw new BadRequestException('Invalid driver ID or role');
+          }
+        }
+
+        // Check if the provided assistant ID exists and has the ASSISTANT role
+        for (const assistantId of assistant) {
+          const isAssistantId = await prisma.keycloakAccount.findUnique({
+            where: { id: assistantId, Role: KeycloakAccountRole.ASSISTANT },
+          });
+          if (!isAssistantId) {
+            throw new BadRequestException('Invalid assistant ID or role');
+          }
+        }
+
+        // Check truckOwnershipType
+        const isTruckOwnershipType = await prisma.truckOwnershipType.findUnique(
+          {
+            where: { id: truckOwnershipTypeId },
+          },
+        );
+        if (!isTruckOwnershipType) {
+          throw new BadRequestException('Invalid truckOwnershipType ID');
+        }
+
+        // Check zone
+        const isZone = await prisma.zone.findUnique({
+          where: { id: zoneId },
+        });
+        if (!isZone) {
+          throw new BadRequestException('Invalid zone ID');
+        }
+
+        // Check warehouse
+        const isWarehouse = await prisma.warehouse.findUnique({
+          where: { id: warehouseId },
+        });
+        if (!isWarehouse) {
+          throw new BadRequestException('Invalid warehouse ID');
+        }
+
+        // Check if the provided truck size ID exists
+        const isTruckSizeId = await prisma.truckSize.findUnique({
+          where: { id: truckSizeId },
+        });
+        if (!isTruckSizeId) {
+          throw new BadRequestException('Invalid truck size ID');
+        }
+
+        // Check if the provided fuel ID exists
+        const isFuelId = await prisma.fuel.findUnique({
+          where: { id: fuelId },
+        });
+        if (!isFuelId) {
+          throw new BadRequestException('Invalid fuel ID');
+        }
+
+        // Create a new truck record
+        const truck = await prisma.truck.create({
+          data: {
+            truckSizeId,
+            fuelId,
+            licensePlate,
+            model,
+            manufacturer,
+            functioning,
+            zoneId,
+            warehouseId,
+            truckOwnershipTypeId,
+          },
+        });
+
+        // Assign assistants to the truck
+        for (const assistantId of assistant) {
+          await prisma.truckAssistant.create({
+            data: { truckId: truck.id, assistantId: assistantId },
+          });
+        }
+
+        // Assign drivers to the truck
+        for (const driverId of driver) {
+          await prisma.truckDriver.create({
+            data: { truckId: truck.id, driverId: driverId },
+          });
+        }
       });
-      if (!isZone) {
-        throw new BadRequestException('Invalid zone ID');
-      }
 
-      // Check warehouse
-      const isWarehouse = await this.prisma.warehouse.findUnique({
-        where: { id: warehouseId },
-      });
-      if (!isWarehouse) {
-        throw new BadRequestException('Invalid warehouse ID');
-      }
-
-      // Check if the provided truck size ID exists
-      const isTruckSizeId = await this.prisma.truckSize.findUnique({
-        where: { id: truckSizeId },
-      });
-      if (!isTruckSizeId) {
-        throw new BadRequestException('Invalid truck size ID');
-      }
-
-      // Check if the provided fuel ID exists
-      const isFuelId = await this.prisma.fuel.findUnique({
-        where: { id: fuelId },
-      });
-      if (!isFuelId) {
-        throw new BadRequestException('Invalid fuel ID');
-      }
-
-      // Check if the provided driver ID exists and has the DRIVER role
-      const isDriverId = await this.prisma.keycloakAccount.findUnique({
-        where: { id: driverId, Role: KeycloakAccountRole.DRIVER },
-      });
-      if (!isDriverId) {
-        throw new BadRequestException('Invalid driver ID or role');
-      }
-
-      // Create a new truck record
-      const truck = await this.prisma.truck.create({ data: createTruckDto });
       return {
-        data: truck,
+        data: {},
         message: 'Created successfully',
         statusCode: HttpStatus.CREATED,
       };
@@ -227,10 +312,14 @@ export class TruckService {
                 name: true,
               },
             },
-            driver: {
+            TruckDriver: {
               select: {
-                name: true,
-                email: true,
+                driver: true,
+              },
+            },
+            TruckAssistant: {
+              select: {
+                assistant: true,
               },
             },
           },
@@ -260,7 +349,12 @@ export class TruckService {
   async findOne(id: number) {
     const truck = await this.prisma.truck.findUnique({
       where: { id },
-      include: { driver: true, fuel: true, truckSize: true }, // Include related entities
+      include: {
+        TruckDriver: true,
+        fuel: true,
+        truckSize: true,
+        TruckAssistant: true,
+      }, // Include related entities
     });
     if (!truck) {
       throw new NotFoundException('Truck not found');
@@ -273,58 +367,85 @@ export class TruckService {
     try {
       // Verify that the truck exists
       const isTruck = await this.findOne(id);
-      const { truckSizeId, fuelId, driverId, zoneId, warehouseId } =
-        updateTruckDto;
 
-      // Check zone
-      const isZone = await this.prisma.zone.findUnique({
-        where: { id: zoneId },
-      });
-      if (!isZone) {
-        throw new BadRequestException('Invalid zone ID');
-      }
+      const {
+        truckSizeId,
+        fuelId,
+        zoneId,
+        warehouseId,
+        truckOwnershipTypeId,
+        licensePlate,
+        model,
+        manufacturer,
+        functioning,
+      } = updateTruckDto;
 
-      // Check warehouse
-      const isWarehouse = await this.prisma.warehouse.findUnique({
-        where: { id: warehouseId },
-      });
-      if (!isWarehouse) {
-        throw new BadRequestException('Invalid warehouse ID');
-      }
+      // Start a transaction
+      await this.prisma.$transaction(async (prisma) => {
+        // Check truckOwnershipType
+        const isTruckOwnershipType = await prisma.truckOwnershipType.findUnique(
+          {
+            where: { id: truckOwnershipTypeId },
+          },
+        );
+        if (!isTruckOwnershipType) {
+          throw new BadRequestException('Invalid truckOwnershipType ID');
+        }
 
-      // Check if the provided truck size ID exists
-      const isTruckSizeId = await this.prisma.truckSize.findUnique({
-        where: { id: truckSizeId },
-      });
-      if (!isTruckSizeId) {
-        throw new BadRequestException('Invalid truck size ID');
-      }
+        // Check zone
+        const isZone = await prisma.zone.findUnique({
+          where: { id: zoneId },
+        });
+        if (!isZone) {
+          throw new BadRequestException('Invalid zone ID');
+        }
 
-      // Check if the provided fuel ID exists
-      const isFuelId = await this.prisma.fuel.findUnique({
-        where: { id: fuelId },
-      });
-      if (!isFuelId) {
-        throw new BadRequestException('Invalid fuel ID');
-      }
-      // Check if the provided driver ID exists and has the DRIVER role
-      const isDriverId = await this.prisma.keycloakAccount.findUnique({
-        where: { id: driverId, Role: KeycloakAccountRole.DRIVER },
-      });
-      if (!isDriverId) {
-        throw new BadRequestException('Invalid driver ID or role');
-      }
+        // Check warehouse
+        const isWarehouse = await prisma.warehouse.findUnique({
+          where: { id: warehouseId },
+        });
+        if (!isWarehouse) {
+          throw new BadRequestException('Invalid warehouse ID');
+        }
 
-      // Update the truck record
-      const truck = await this.prisma.truck.update({
-        where: { id: isTruck.id },
-        data: updateTruckDto,
+        // Check if the provided truck size ID exists
+        const isTruckSizeId = await prisma.truckSize.findUnique({
+          where: { id: truckSizeId },
+        });
+        if (!isTruckSizeId) {
+          throw new BadRequestException('Invalid truck size ID');
+        }
+
+        // Check if the provided fuel ID exists
+        const isFuelId = await prisma.fuel.findUnique({
+          where: { id: fuelId },
+        });
+        if (!isFuelId) {
+          throw new BadRequestException('Invalid fuel ID');
+        }
+
+        // Update the truck record
+        const truck = await prisma.truck.update({
+          where: { id: isTruck.id },
+          data: {
+            truckSizeId,
+            fuelId,
+            licensePlate,
+            model,
+            manufacturer,
+            functioning,
+            zoneId,
+            warehouseId,
+            truckOwnershipTypeId,
+          },
+        });
+
+        return {
+          data: truck,
+          message: 'Updated successfully',
+          statusCode: HttpStatus.OK,
+        };
       });
-      return {
-        data: truck,
-        message: 'Updated successfully',
-        statusCode: HttpStatus.OK,
-      };
     } catch (error) {
       // Handle duplicate license plate error
       if (error.code === 'P2002') {
@@ -345,6 +466,99 @@ export class TruckService {
       message: 'Deleted successfully',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  async reassignAssistant(
+    id: number,
+    reassignAssistantDto: ReassignAssistantDto,
+  ) {
+    try {
+      // Start a transaction
+      await this.prisma.$transaction(async (prisma) => {
+        // Check if truck ID exists
+        const isTruck = await prisma.truck.findUnique({ where: { id } });
+        if (!isTruck) {
+          throw new NotFoundException();
+        }
+
+        // Delete existing truck assistants
+        await prisma.truckAssistant.deleteMany({ where: { truckId: id } });
+
+        const { assistant } = reassignAssistantDto;
+        if (assistant.length <= 0) {
+          throw new BadRequestException('Please input assistant');
+        }
+
+        // Check if the provided assistant ID exists and has the ASSISTANT role
+        for (const assistantId of assistant) {
+          const isAssistantId = await prisma.keycloakAccount.findUnique({
+            where: { id: assistantId, Role: KeycloakAccountRole.ASSISTANT },
+          });
+          if (!isAssistantId) {
+            throw new BadRequestException('Invalid assistant ID or role');
+          }
+        }
+
+        // Assign new assistants to the truck
+        for (const assistantId of assistant) {
+          await prisma.truckAssistant.create({
+            data: { truckId: id, assistantId: assistantId },
+          });
+        }
+      });
+
+      return {
+        message: 'Updated successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async reassignDriver(id: number, reassignDriverDto: ReassignDriverDto) {
+    try {
+      // Check if truck ID exists
+      const isTruck = await this.prisma.truck.findUnique({ where: { id } });
+      if (!isTruck) {
+        throw new NotFoundException();
+      }
+
+      const { driver } = reassignDriverDto;
+      if (driver.length <= 0) {
+        throw new BadRequestException('Please input driver');
+      }
+
+      // Start a transaction
+      await this.prisma.$transaction(async (prisma) => {
+        // Delete existing truck drivers
+        await prisma.truckDriver.deleteMany({ where: { truckId: id } });
+
+        // Check if the provided driver ID exists and has the DRIVER role
+        for (const driverId of driver) {
+          const isDriverId = await prisma.keycloakAccount.findUnique({
+            where: { id: driverId, Role: KeycloakAccountRole.DRIVER },
+          });
+          if (!isDriverId) {
+            throw new BadRequestException('Invalid driver ID or role');
+          }
+        }
+
+        // Assign new drivers to the truck
+        for (const driverId of driver) {
+          await prisma.truckDriver.create({
+            data: { truckId: id, driverId: driverId },
+          });
+        }
+      });
+
+      return {
+        message: 'Updated successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 }
 

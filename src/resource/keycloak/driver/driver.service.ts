@@ -15,7 +15,7 @@ export class DriverService {
     status: AccountStatus,
   ): Promise<ResponseAllDto<any>> {
     const skip = (page - 1) * limit; // Calculate the number of items to skip for pagination
-    const baseWhere = { Role: KeycloakAccountRole.ADMIN }; // Base condition to filter by driver role
+    const baseWhere = { Role: KeycloakAccountRole.DRIVER }; // Base condition to filter by driver role
 
     // Initialize the where clause with the base condition
     let where: any = {

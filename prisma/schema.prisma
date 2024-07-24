@@ -107,8 +107,8 @@ model KeycloakAccount {
   client_id      String
   status         AccountStatus       @default(ACTIVE)
   Role           KeycloakAccountRole
-  Truck          Truck[]
   TruckAssistant TruckAssistant[]
+  TruckDriver    TruckDriver[]
 }
 
 model Fuel {
@@ -144,24 +144,26 @@ enum TruckStatus {
 }
 
 model Truck {
-  id             Int              @id @default(autoincrement())
-  truckSize      TruckSize?       @relation(fields: [truckSizeId], references: [id], onDelete: SetNull)
-  truckSizeId    Int?
-  fuel           Fuel?            @relation(fields: [fuelId], references: [id], onDelete: SetNull)
-  fuelId         Int?
-  licensePlate   String           @unique
-  model          String?
-  manufacturer   String?
-  status         TruckStatus      @default(AVAILABLE)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  driver         KeycloakAccount  @relation(fields: [driverId], references: [id])
-  TruckAssistant TruckAssistant[]
-  driverId       Int
-  zone           Zone?            @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  zoneId         Int?
-  warehouse      Warehouse?       @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
-  warehouseId    Int?
+  id                   Int                 @id @default(autoincrement())
+  truckSize            TruckSize?          @relation(fields: [truckSizeId], references: [id], onDelete: SetNull)
+  truckSizeId          Int?
+  fuel                 Fuel?               @relation(fields: [fuelId], references: [id], onDelete: SetNull)
+  fuelId               Int?
+  licensePlate         String              @unique
+  model                String?
+  manufacturer         String?
+  functioning          String?
+  status               TruckStatus         @default(AVAILABLE)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  zone                 Zone?               @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  zoneId               Int?
+  warehouse            Warehouse?          @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  warehouseId          Int?
+  truckOwnershipType   TruckOwnershipType? @relation(fields: [truckOwnershipTypeId], references: [id], onDelete: SetNull)
+  truckOwnershipTypeId Int?
+  TruckAssistant       TruckAssistant[]
+  TruckDriver          TruckDriver[]
 }
 
 model TruckAssistant {
@@ -170,6 +172,14 @@ model TruckAssistant {
   truckId     Int
   assistant   KeycloakAccount @relation(fields: [assistantId], references: [id], onDelete: Cascade)
   assistantId Int
+}
+
+model TruckDriver {
+  id       Int             @id @default(autoincrement())
+  truck    Truck           @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  truckId  Int
+  driver   KeycloakAccount @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  driverId Int
 }
 
 model System {
@@ -202,5 +212,12 @@ model Warehouse {
   lat         Float
   long        Float
   information String
+  Truck       Truck[]
+}
+
+model TruckOwnershipType {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String?
   Truck       Truck[]
 }

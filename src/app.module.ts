@@ -18,6 +18,7 @@ import { AssistantModule } from './resource/keycloak/assistant/assistant.module'
 import { ZoneModule } from './resource/zone/zone.module';
 import { OfficerControllModule } from './resource/officer-controll/officer-controll.module';
 import { WarehouseModule } from './resource/warehouse/warehouse.module';
+import { TruckOwnershipTypeModule } from './resource/truck/truck-ownership-type/truck-ownership-type.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { WarehouseModule } from './resource/warehouse/warehouse.module';
     ZoneModule,
     OfficerControllModule,
     WarehouseModule,
+    TruckOwnershipTypeModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],

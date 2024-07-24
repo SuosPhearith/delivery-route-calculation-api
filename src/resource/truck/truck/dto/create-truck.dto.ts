@@ -1,4 +1,10 @@
-import { IsInt, IsString, IsOptional, IsNotEmpty } from 'class-validator';
+import {
+  IsInt,
+  IsString,
+  IsOptional,
+  IsNotEmpty,
+  IsArray,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateTruckDto {
@@ -22,10 +28,17 @@ export class CreateTruckDto {
   @IsOptional()
   manufacturer?: string;
 
+  @IsString()
+  @IsOptional()
+  functioning?: string;
+
   @IsNotEmpty()
-  @IsInt()
-  @Type(() => Number)
-  driverId: number;
+  @IsArray()
+  driver: number[];
+
+  @IsNotEmpty()
+  @IsArray()
+  assistant: number[];
 
   @IsNotEmpty()
   @IsInt()
@@ -36,4 +49,9 @@ export class CreateTruckDto {
   @IsInt()
   @Type(() => Number)
   warehouseId: number;
+
+  @IsNotEmpty()
+  @IsInt()
+  @Type(() => Number)
+  truckOwnershipTypeId: number;
 }

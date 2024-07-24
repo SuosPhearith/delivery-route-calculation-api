@@ -150,9 +150,6 @@ export class SizeService {
     try {
       // Check if the truck size exists
       const isSize = await this.findOne(id);
-      if (!isSize) {
-        throw new NotFoundException();
-      }
 
       // Delete the truck size from the database
       await this.prisma.truckSize.delete({
