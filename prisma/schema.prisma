@@ -122,7 +122,7 @@ model TruckSize {
   id              Int     @id @default(autoincrement())
   name            String  @unique
   containerLenght Float
-  containerWeight Float
+  containerWidth  Float
   containerHeight Float
   containerCubic  Float
   Truck           Truck[]
@@ -132,7 +132,7 @@ model CaseSize {
   id         Int    @id @default(autoincrement())
   name       String @unique
   caseLenght Float
-  caseWeight Float
+  caseWidth  Float
   caseHeight Float
   caseCubic  Float
 }

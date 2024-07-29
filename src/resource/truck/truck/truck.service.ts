@@ -276,11 +276,6 @@ export class TruckService {
       where = {
         OR: [
           { licensePlate: { contains: query, mode: 'insensitive' } }, // Search by license plate
-          {
-            driver: {
-              name: { contains: query, mode: 'insensitive' }, // Search by driver name
-            },
-          },
         ],
       };
     }
@@ -302,6 +297,9 @@ export class TruckService {
           skip,
           take: limit,
           include: {
+            zone: true,
+            truckOwnershipType: true,
+            warehouse: true,
             truckSize: {
               select: {
                 name: true,

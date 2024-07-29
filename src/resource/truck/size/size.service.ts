@@ -22,19 +22,18 @@ export class SizeService {
   ): Promise<ResponseCreateOrUpdateDTO> {
     try {
       // Destructure necessary properties from the DTO
-      const { name, containerLenght, containerWeight, containerHeight } =
+      const { name, containerLenght, containerWidth, containerHeight } =
         createSizeDto;
 
       // Calculate the cubic capacity of the container
-      const containerCubic =
-        containerLenght * containerWeight * containerHeight;
+      const containerCubic = containerLenght * containerWidth * containerHeight;
 
       // Create a new truck size entry in the database
       const newSize = await this.prisma.truckSize.create({
         data: {
           name,
           containerLenght,
-          containerWeight,
+          containerWidth,
           containerHeight,
           containerCubic,
         },
@@ -65,6 +64,13 @@ export class SizeService {
         this.prisma.truckSize.findMany({
           skip,
           take: limit,
+          include: {
+            _count: {
+              select: {
+                Truck: true, // Count the number of trucks in each zone
+              },
+            },
+          },
           orderBy: { id: 'desc' }, // Order by ID in descending order
         }),
         // Fetch the total count of truck sizes
@@ -110,12 +116,11 @@ export class SizeService {
       }
 
       // Destructure necessary properties from the DTO
-      const { name, containerLenght, containerWeight, containerHeight } =
+      const { name, containerLenght, containerWidth, containerHeight } =
         updateSizeDto;
 
       // Calculate the new cubic capacity of the container
-      const containerCubic =
-        containerLenght * containerWeight * containerHeight;
+      const containerCubic = containerLenght * containerWidth * containerHeight;
 
       // Update the truck size in the database
       const updatedSize = await this.prisma.truckSize.update({
@@ -123,7 +128,7 @@ export class SizeService {
         data: {
           name,
           containerLenght,
-          containerWeight,
+          containerWidth,
           containerHeight,
           containerCubic,
         },

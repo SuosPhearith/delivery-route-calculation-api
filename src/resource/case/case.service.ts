@@ -19,17 +19,17 @@ export class CaseService {
   ): Promise<ResponseCreateOrUpdateDTO> {
     try {
       // Destructure necessary properties from the DTO
-      const { name, caseLenght, caseWeight, caseHeight } = createCaseDto;
+      const { name, caseLenght, caseWidth, caseHeight } = createCaseDto;
 
       // Calculate the cubic capacity of the case
-      const caseCubic = caseLenght * caseWeight * caseHeight;
+      const caseCubic = caseLenght * caseWidth * caseHeight;
 
       // Create a new case entry in the database
       const newCase = await this.prisma.caseSize.create({
         data: {
           name,
           caseLenght,
-          caseWeight,
+          caseWidth,
           caseHeight,
           caseCubic,
         },
@@ -105,10 +105,10 @@ export class CaseService {
       }
 
       // Destructure necessary properties from the DTO
-      const { name, caseLenght, caseWeight, caseHeight } = updateCaseDto;
+      const { name, caseLenght, caseWidth, caseHeight } = updateCaseDto;
 
       // Calculate the new cubic capacity of the case
-      const caseCubic = caseLenght * caseWeight * caseHeight;
+      const caseCubic = caseLenght * caseWidth * caseHeight;
 
       // Update the case in the database
       const updatedSize = await this.prisma.caseSize.update({
@@ -116,7 +116,7 @@ export class CaseService {
         data: {
           name,
           caseLenght,
-          caseWeight,
+          caseWidth,
           caseHeight,
           caseCubic,
         },

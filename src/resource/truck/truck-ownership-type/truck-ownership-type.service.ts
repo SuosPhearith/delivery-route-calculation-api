@@ -48,7 +48,11 @@ export class TruckOwnershipTypeService {
           skip,
           take: limit,
           include: {
-            Truck: true,
+            _count: {
+              select: {
+                Truck: true, // Count the number of trucks in each zone
+              },
+            },
           },
           orderBy: { id: 'desc' }, // Order by ID in descending order
         }),

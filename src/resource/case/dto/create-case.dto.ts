@@ -14,7 +14,7 @@ export class CreateCaseDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  caseWeight: number;
+  caseWidth: number;
 
   @IsNotEmpty()
   @Type(() => Number)

@@ -87,6 +87,9 @@ export class OfficerControllService {
           where,
           skip,
           take: limit,
+          include: {
+            Zone: true,
+          },
           orderBy: { id: 'desc' }, // Order by ID in descending order
         }),
         // Fetch the total count of OfficerControlls based on the where clause

@@ -14,7 +14,7 @@ export class CreateSizeDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  containerWeight: number;
+  containerWidth: number;
 
   @IsNotEmpty()
   @Type(() => Number)

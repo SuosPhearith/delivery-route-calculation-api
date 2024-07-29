@@ -43,6 +43,13 @@ export class FuelService {
         this.prisma.fuel.findMany({
           skip,
           take: limit,
+          include: {
+            _count: {
+              select: {
+                Truck: true, // Count the number of trucks in each zone
+              },
+            },
+          },
           orderBy: { id: 'desc' }, // Order by ID in descending order
         }),
         // Fetch the total count of fuel entries

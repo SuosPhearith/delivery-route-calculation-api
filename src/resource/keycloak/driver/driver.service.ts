@@ -12,7 +12,7 @@ export class DriverService {
     query: string,
     page: number,
     limit: number,
-    status: AccountStatus,
+    status: AccountStatus | null,
   ): Promise<ResponseAllDto<any>> {
     const skip = (page - 1) * limit; // Calculate the number of items to skip for pagination
     const baseWhere = { Role: KeycloakAccountRole.DRIVER }; // Base condition to filter by driver role

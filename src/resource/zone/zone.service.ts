@@ -18,6 +18,7 @@ export class ZoneService {
   async findAllOfficerControll(): Promise<SelectDto[]> {
     const ofc = await this.prisma.officerControll.findMany({
       select: { id: true, name: true },
+      orderBy: { id: 'desc' },
     });
 
     // Transform the results into the desired format for frontend usage
@@ -95,6 +96,11 @@ export class ZoneService {
           { name: { contains: query, mode: 'insensitive' } }, // Search by name
           { description: { contains: query, mode: 'insensitive' } }, // Search by description
           { code: { contains: query, mode: 'insensitive' } }, // Search by code
+          {
+            officerControll: {
+              name: { contains: query, mode: 'insensitive' }, // Search by officerControll name
+            },
+          },
         ],
       };
     }
@@ -107,6 +113,10 @@ export class ZoneService {
           where,
           skip,
           take: limit,
+          include: {
+            officerControll: true,
+            Truck: true,
+          },
           orderBy: { id: 'desc' }, // Order by ID in descending order
         }),
         // Fetch the total count of zones based on the where clause

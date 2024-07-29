@@ -7,7 +7,8 @@ export class DriverController {
   constructor(private readonly driverService: DriverService) {}
   @Get()
   async findAll(@Query() filterDto: FilterDto) {
-    const { query, page, limit, status } = filterDto;
+    const { query, page, limit } = filterDto;
+    const status = filterDto.status ? filterDto.status : null;
     return this.driverService.findAll(query, page, limit, status);
   }
 }

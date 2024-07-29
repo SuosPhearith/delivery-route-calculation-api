@@ -5,5 +5,5 @@ import { SearchDto } from 'src/global/dto/search.dto';
 export class FilterDto extends SearchDto {
   @IsOptional()
   @IsEnum(AccountStatus)
-  status: AccountStatus;
+  status?: AccountStatus;
 }
