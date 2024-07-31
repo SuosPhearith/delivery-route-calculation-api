@@ -265,6 +265,11 @@ export class TruckService {
     page: number,
     limit: number,
     status: TruckStatus,
+    truckSizeId: number,
+    zoneId: number,
+    fuelId: number,
+    warehouseId: number,
+    truckOwnershipTypeId: number,
   ): Promise<ResponseAllDto<any>> {
     const skip = (page - 1) * limit; // Calculate the number of items to skip for pagination
 
@@ -276,6 +281,9 @@ export class TruckService {
       where = {
         OR: [
           { licensePlate: { contains: query, mode: 'insensitive' } }, // Search by license plate
+          { model: { contains: query, mode: 'insensitive' } }, // Search
+          { manufacturer: { contains: query, mode: 'insensitive' } }, // Search
+          { functioning: { contains: query, mode: 'insensitive' } }, // Search
         ],
       };
     }
@@ -284,7 +292,37 @@ export class TruckService {
     if (status) {
       where = {
         ...where,
-        status, // Filter by status
+        status, // Filter
+      };
+    }
+    if (truckSizeId) {
+      where = {
+        ...where,
+        truckSizeId, // Filter
+      };
+    }
+    if (zoneId) {
+      where = {
+        ...where,
+        zoneId, // Filter
+      };
+    }
+    if (fuelId) {
+      where = {
+        ...where,
+        fuelId, // Filter
+      };
+    }
+    if (warehouseId) {
+      where = {
+        ...where,
+        warehouseId, // Filter
+      };
+    }
+    if (truckOwnershipTypeId) {
+      where = {
+        ...where,
+        truckOwnershipTypeId, // Filter
       };
     }
 
@@ -376,10 +414,53 @@ export class TruckService {
         model,
         manufacturer,
         functioning,
+        driver,
+        assistant,
       } = updateTruckDto;
+
+      if (driver.length <= 0) {
+        throw new BadRequestException('Please input driver');
+      }
+      if (assistant.length <= 0) {
+        throw new BadRequestException('Please input assistant');
+      }
 
       // Start a transaction
       await this.prisma.$transaction(async (prisma) => {
+        // Delete existing truck assistants
+        await prisma.truckAssistant.deleteMany({ where: { truckId: id } });
+        // Delete existing truck drivers
+        await prisma.truckDriver.deleteMany({ where: { truckId: id } });
+        // Check if the provided assistant ID exists and has the ASSISTANT role
+        for (const assistantId of assistant) {
+          const isAssistantId = await prisma.keycloakAccount.findUnique({
+            where: { id: assistantId, Role: KeycloakAccountRole.ASSISTANT },
+          });
+          if (!isAssistantId) {
+            throw new BadRequestException('Invalid assistant ID or role');
+          }
+        }
+        // Check if the provided driver ID exists and has the DRIVER role
+        for (const driverId of driver) {
+          const isDriverId = await prisma.keycloakAccount.findUnique({
+            where: { id: driverId, Role: KeycloakAccountRole.DRIVER },
+          });
+          if (!isDriverId) {
+            throw new BadRequestException('Invalid driver ID or role');
+          }
+        }
+        // Assign new assistants to the truck
+        for (const assistantId of assistant) {
+          await prisma.truckAssistant.create({
+            data: { truckId: id, assistantId: assistantId },
+          });
+        }
+        // Assign new drivers to the truck
+        for (const driverId of driver) {
+          await prisma.truckDriver.create({
+            data: { truckId: id, driverId: driverId },
+          });
+        }
         // Check truckOwnershipType
         const isTruckOwnershipType = await prisma.truckOwnershipType.findUnique(
           {

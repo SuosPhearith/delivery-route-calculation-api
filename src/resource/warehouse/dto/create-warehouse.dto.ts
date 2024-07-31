@@ -1,5 +1,6 @@
 import {
   IsLatitude,
+  IsLongitude,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -18,7 +19,7 @@ export class CreateWarehouseDto {
 
   @IsNotEmpty()
   @IsNumber()
-  @IsLatitude()
+  @IsLongitude()
   long: number;
 
   @IsOptional()

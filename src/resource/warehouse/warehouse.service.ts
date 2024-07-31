@@ -62,6 +62,13 @@ export class WarehouseService {
           where,
           skip,
           take: limit,
+          include: {
+            _count: {
+              select: {
+                Truck: true, // Count the number of trucks in each zone
+              },
+            },
+          },
           orderBy: { id: 'desc' }, // Order by ID in descending order
         }),
         // Fetch the total count of warehouses based on the where clause

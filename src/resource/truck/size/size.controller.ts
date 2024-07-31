@@ -30,6 +30,8 @@ export class SizeController {
     return this.sizeService.create(createSizeDto);
   }
 
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   @Get()
   async findAll(@Query() paginationDto: PaginationDto) {
     const { page, limit } = paginationDto;

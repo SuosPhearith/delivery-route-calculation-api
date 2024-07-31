@@ -66,7 +66,7 @@ export class KeycloakService {
       }
 
       // Return token response from Keycloak
-      const responseToken = { ...response.data, role };
+      const responseToken = { ...response.data, role, name, email };
       return responseToken;
     } catch (error: any) {
       // Handle errors based on status code

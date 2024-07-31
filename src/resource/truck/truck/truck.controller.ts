@@ -62,8 +62,28 @@ export class TruckController {
 
   @Get()
   async findAll(@Query() filterDto: FilterDto) {
-    const { query, page, limit, status } = filterDto;
-    return this.truckService.findAll(query, page, limit, status);
+    const {
+      query,
+      page,
+      limit,
+      status,
+      truckSizeId,
+      zoneId,
+      fuelId,
+      warehouseId,
+      truckOwnershipTypeId,
+    } = filterDto;
+    return this.truckService.findAll(
+      query,
+      page,
+      limit,
+      status,
+      truckSizeId,
+      zoneId,
+      fuelId,
+      warehouseId,
+      truckOwnershipTypeId,
+    );
   }
 
   @Get(':id')
