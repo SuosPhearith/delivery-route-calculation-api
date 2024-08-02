@@ -40,6 +40,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.6",
+    "haversine-distance": "^1.2.3",
     "jsonwebtoken": "^9.0.2",
     "keycloak-connect": "^25.0.1",
     "multer": "^1.4.5-lts.1",
@@ -47,7 +48,9 @@
     "passport-http-bearer": "^1.0.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "ua-parser-js": "^1.0.37"
+    "ua-parser-js": "^1.0.37",
+    "uuid": "^10.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -59,6 +62,7 @@
     "@types/jest": "^29.5.2",
     "@types/node": "^20.3.1",
     "@types/supertest": "^2.0.12",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.42.0",

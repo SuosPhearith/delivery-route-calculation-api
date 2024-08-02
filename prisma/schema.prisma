@@ -221,3 +221,23 @@ model TruckOwnershipType {
   description String?
   Truck       Truck[]
 }
+
+model GroupDirection {
+  id        Int         @id @default(autoincrement())
+  group     String      @unique
+  note      String?
+  createdAt DateTime    @default(now())
+  Direction Direction[]
+}
+
+model Direction {
+  id               Int            @id @default(autoincrement())
+  route            String?
+  lat              Float
+  long             Float
+  name             String?
+  status           String
+  type             String
+  groupDirection   GroupDirection @relation(fields: [groupDirectionId], references: [id], onDelete: Cascade)
+  groupDirectionId Int
+}

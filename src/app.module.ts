@@ -19,6 +19,7 @@ import { ZoneModule } from './resource/zone/zone.module';
 import { OfficerControllModule } from './resource/officer-controll/officer-controll.module';
 import { WarehouseModule } from './resource/warehouse/warehouse.module';
 import { TruckOwnershipTypeModule } from './resource/truck/truck-ownership-type/truck-ownership-type.module';
+import { DirectionModule } from './resource/direction/direction.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { TruckOwnershipTypeModule } from './resource/truck/truck-ownership-type/
     OfficerControllModule,
     WarehouseModule,
     TruckOwnershipTypeModule,
+    DirectionModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],
