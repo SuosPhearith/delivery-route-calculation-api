@@ -20,6 +20,7 @@ import { OfficerControllModule } from './resource/officer-controll/officer-contr
 import { WarehouseModule } from './resource/warehouse/warehouse.module';
 import { TruckOwnershipTypeModule } from './resource/truck/truck-ownership-type/truck-ownership-type.module';
 import { DirectionModule } from './resource/direction/direction.module';
+import { DrcDateModule } from './resource/drc-date/drc-date.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { DirectionModule } from './resource/direction/direction.module';
     WarehouseModule,
     TruckOwnershipTypeModule,
     DirectionModule,
+    DrcDateModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],

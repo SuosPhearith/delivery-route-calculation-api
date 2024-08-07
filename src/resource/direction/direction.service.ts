@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateEachDirectionDto } from './dto/create-each-direction.dto';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const haversine = require('haversine-distance');
 
 @Injectable()
 export class DirectionService {
@@ -27,22 +29,22 @@ export class DirectionService {
     return jsonData;
   }
 
-  groupByRoute(data: any) {
-    const grouped = data.reduce((acc, item) => {
-      const key = item.route;
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(item);
-      return acc;
-    }, {});
+  // groupByRoute1(data: any) {
+  //   const grouped = data.reduce((acc, item) => {
+  //     const key = item.route;
+  //     if (!acc[key]) {
+  //       acc[key] = [];
+  //     }
+  //     acc[key].push(item);
+  //     return acc;
+  //   }, {});
 
-    // Convert grouped object to an array
-    return Object.keys(grouped).map((route) => ({
-      route,
-      directions: grouped[route],
-    }));
-  }
+  //   // Convert grouped object to an array
+  //   return Object.keys(grouped).map((route) => ({
+  //     route,
+  //     directions: grouped[route],
+  //   }));
+  // }
 
   async create(createDirectionDto: CreateDirectionDto, file: any) {
     const prisma = this.prisma;
@@ -178,20 +180,20 @@ export class DirectionService {
     }
   }
 
-  async findOne(groupDirectionId: number) {
-    const isGroupDirId = await this.prisma.groupDirection.findUnique({
-      where: { id: groupDirectionId },
-    });
-    if (!isGroupDirId) {
-      throw new NotFoundException();
-    }
-    const directions = await this.prisma.direction.findMany({
-      where: {
-        groupDirectionId,
-      },
-    });
-    return this.groupByRoute(directions);
-  }
+  // async findOne1(groupDirectionId: number) {
+  //   const isGroupDirId = await this.prisma.groupDirection.findUnique({
+  //     where: { id: groupDirectionId },
+  //   });
+  //   if (!isGroupDirId) {
+  //     throw new NotFoundException();
+  //   }
+  //   const directions = await this.prisma.direction.findMany({
+  //     where: {
+  //       groupDirectionId,
+  //     },
+  //   });
+  //   return this.groupByRoute(directions);
+  // }
 
   async remove(groupDirectionId: number) {
     const isGroupDirId = await this.prisma.groupDirection.findUnique({
@@ -207,5 +209,71 @@ export class DirectionService {
       message: 'Deleted successfully',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  async findOne(groupDirectionId: number) {
+    const isGroupDirId = await this.prisma.groupDirection.findUnique({
+      where: { id: groupDirectionId },
+    });
+    if (!isGroupDirId) {
+      throw new NotFoundException();
+    }
+
+    const directions = await this.prisma.direction.findMany({
+      where: {
+        groupDirectionId,
+      },
+    });
+
+    if (directions.length === 0) {
+      return [];
+    }
+
+    // Find the optimal sequence by shortest total distance
+    const optimalRoute = this.findShortestRoute(directions);
+
+    return this.groupByRoute(optimalRoute);
+  }
+
+  findShortestRoute(directions: any[]) {
+    const start = directions[0];
+    const remaining = directions.slice(1);
+    const optimalSequence = [start];
+    let currentLocation = start;
+
+    while (remaining.length > 0) {
+      let shortestDistance = Infinity;
+      let closestDirectionIndex = -1;
+
+      for (let i = 0; i < remaining.length; i++) {
+        const distance = haversine(
+          { lat: currentLocation.lat, lng: currentLocation.long },
+          { lat: remaining[i].lat, lng: remaining[i].long },
+        );
+
+        if (distance < shortestDistance) {
+          shortestDistance = distance;
+          closestDirectionIndex = i;
+        }
+      }
+
+      currentLocation = remaining.splice(closestDirectionIndex, 1)[0];
+      optimalSequence.push(currentLocation);
+    }
+
+    return optimalSequence;
+  }
+
+  groupByRoute(directions: any[]) {
+    const grouped = directions.reduce((acc, direction) => {
+      const route = direction.route;
+      if (!acc[route]) {
+        acc[route] = { route, directions: [] };
+      }
+      acc[route].directions.push(direction);
+      return acc;
+    }, {});
+
+    return Object.values(grouped);
   }
 }

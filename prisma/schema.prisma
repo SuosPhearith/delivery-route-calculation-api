@@ -119,22 +119,24 @@ model Fuel {
 }
 
 model TruckSize {
-  id              Int     @id @default(autoincrement())
-  name            String  @unique
+  id              Int        @id @default(autoincrement())
+  name            String     @unique
   containerLenght Float
   containerWidth  Float
   containerHeight Float
   containerCubic  Float
   Truck           Truck[]
+  Location        Location[]
 }
 
 model CaseSize {
-  id         Int    @id @default(autoincrement())
-  name       String @unique
-  caseLenght Float
-  caseWidth  Float
-  caseHeight Float
-  caseCubic  Float
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  caseLenght  Float
+  caseWidth   Float
+  caseHeight  Float
+  caseCubic   Float
+  Requirement Requirement[]
 }
 
 enum TruckStatus {
@@ -175,11 +177,12 @@ model TruckAssistant {
 }
 
 model TruckDriver {
-  id       Int             @id @default(autoincrement())
-  truck    Truck           @relation(fields: [truckId], references: [id], onDelete: Cascade)
-  truckId  Int
-  driver   KeycloakAccount @relation(fields: [driverId], references: [id], onDelete: Cascade)
-  driverId Int
+  id             Int             @id @default(autoincrement())
+  truck          Truck           @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  truckId        Int
+  driver         KeycloakAccount @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  driverId       Int
+  deliveryAmount Int?
 }
 
 model System {
@@ -197,6 +200,7 @@ model Zone {
   officerControll   OfficerControll? @relation(fields: [officerControllId], references: [id])
   Truck             Truck[]
   officerControllId Int?
+  Location          Location[]
 }
 
 model OfficerControll {
@@ -240,4 +244,87 @@ model Direction {
   type             String
   groupDirection   GroupDirection @relation(fields: [groupDirectionId], references: [id], onDelete: Cascade)
   groupDirectionId Int
+}
+
+model DeliveryRouteCalculationDate {
+  id                                        Int                                         @id @default(autoincrement())
+  date                                      DateTime                                    @unique
+  DeliveryRouteCalculationDateGroupLocation DeliveryRouteCalculationDateGroupLocation[]
+}
+
+model DeliveryRouteCalculationDateGroupLocation {
+  id                             Int                          @id @default(autoincrement())
+  deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id])
+  deliveryRouteCalculationDateId Int
+  groupLocation                  GroupLocation                @relation(fields: [groupLocationId], references: [id])
+  groupLocationId                Int
+}
+
+model GroupLocation {
+  id                                        Int                                         @id @default(autoincrement())
+  group                                     String                                      @unique
+  createdAt                                 DateTime                                    @default(now())
+  Location                                  Location[]
+  DeliveryRouteCalculationDateGroupLocation DeliveryRouteCalculationDateGroupLocation[]
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  TRIVIAL
+}
+
+enum PartOfDay {
+  MORNING // 5am - 12pm
+  AFTERNOON // 12pm - 5pm
+  EVENING // 5pm - 9pm
+  NIGHT //9pm - 5am
+}
+
+model Location {
+  id              Int           @id @default(autoincrement())
+  zone            Zone?         @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  truckSize       TruckSize?    @relation(fields: [truckSizeId], references: [id], onDelete: SetNull)
+  documentType    String?
+  documentNumber  String?
+  documentDate    String?
+  sla             String?
+  uploaddTime     DateTime?
+  latitude        Float
+  longitude       Float
+  locationName    String
+  phone           String
+  se              String
+  homeNo          String?
+  streetNo        String?
+  village         String?
+  sangkat         String?
+  khan            String?
+  hotSpot         String?
+  direction       String?
+  area            String?
+  region          String?
+  division        String?
+  zoneId          Int?
+  truckSizeId     Int?
+  deliveryDate    DateTime
+  paymentTerm     String?
+  comments        String?
+  priority        Priority
+  partOfDay       PartOfDay
+  Requirement     Requirement[]
+  groupLocation   GroupLocation @relation(fields: [groupLocationId], references: [id], onDelete: Cascade)
+  groupLocationId Int
+  capacity        Float?
+  isAssign        Boolean       @default(false)
+}
+
+model Requirement {
+  id         Int      @id @default(autoincrement())
+  location   Location @relation(fields: [locationId], references: [id])
+  locationId Int
+  caseSize   CaseSize @relation(fields: [caseSizeId], references: [id])
+  caseSizeId Int
 }
