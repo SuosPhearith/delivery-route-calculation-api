@@ -12,8 +12,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateEachDirectionDto } from './dto/create-each-direction.dto';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const haversine = require('haversine-distance');
 
 @Injectable()
 export class DirectionService {
@@ -180,21 +178,6 @@ export class DirectionService {
     }
   }
 
-  // async findOne1(groupDirectionId: number) {
-  //   const isGroupDirId = await this.prisma.groupDirection.findUnique({
-  //     where: { id: groupDirectionId },
-  //   });
-  //   if (!isGroupDirId) {
-  //     throw new NotFoundException();
-  //   }
-  //   const directions = await this.prisma.direction.findMany({
-  //     where: {
-  //       groupDirectionId,
-  //     },
-  //   });
-  //   return this.groupByRoute(directions);
-  // }
-
   async remove(groupDirectionId: number) {
     const isGroupDirId = await this.prisma.groupDirection.findUnique({
       where: { id: groupDirectionId },
@@ -210,7 +193,6 @@ export class DirectionService {
       statusCode: HttpStatus.OK,
     };
   }
-
   async findOne(groupDirectionId: number) {
     const isGroupDirId = await this.prisma.groupDirection.findUnique({
       where: { id: groupDirectionId },
@@ -229,51 +211,95 @@ export class DirectionService {
       return [];
     }
 
-    // Find the optimal sequence by shortest total distance
-    const optimalRoute = this.findShortestRoute(directions);
-
-    return this.groupByRoute(optimalRoute);
-  }
-
-  findShortestRoute(directions: any[]) {
-    const start = directions[0];
-    const remaining = directions.slice(1);
-    const optimalSequence = [start];
-    let currentLocation = start;
-
-    while (remaining.length > 0) {
-      let shortestDistance = Infinity;
-      let closestDirectionIndex = -1;
-
-      for (let i = 0; i < remaining.length; i++) {
-        const distance = haversine(
-          { lat: currentLocation.lat, lng: currentLocation.long },
-          { lat: remaining[i].lat, lng: remaining[i].long },
-        );
-
-        if (distance < shortestDistance) {
-          shortestDistance = distance;
-          closestDirectionIndex = i;
-        }
-      }
-
-      currentLocation = remaining.splice(closestDirectionIndex, 1)[0];
-      optimalSequence.push(currentLocation);
+    const groupedByRoute = this.groupByRoute(directions);
+    for (const group of groupedByRoute) {
+      group.directions = this.applyOptimalNNA(group.directions);
     }
 
-    return optimalSequence;
+    return groupedByRoute;
   }
 
-  groupByRoute(directions: any[]) {
+  // Group directions by route
+  private groupByRoute(directions: any[]): any[] {
     const grouped = directions.reduce((acc, direction) => {
       const route = direction.route;
       if (!acc[route]) {
-        acc[route] = { route, directions: [] };
+        acc[route] = {
+          route,
+          directions: [],
+        };
       }
       acc[route].directions.push(direction);
       return acc;
     }, {});
 
     return Object.values(grouped);
+  }
+
+  // Utility method to calculate distance between two locations
+  private calculateDistance(loc1: any, loc2: any): number {
+    const lat1 = loc1.lat;
+    const lon1 = loc1.long;
+    const lat2 = loc2.lat;
+    const lon2 = loc2.long;
+
+    const p = 0.017453292519943295; // Math.PI / 180
+    const c = Math.cos;
+    const a =
+      0.5 -
+      c((lat2 - lat1) * p) / 2 +
+      (c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))) / 2;
+
+    return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+  }
+
+  // Find the optimal sequence using Nearest Neighbor Algorithm
+  private applyOptimalNNA(directions: any[]): any[] {
+    if (directions.length <= 1) {
+      return directions;
+    }
+
+    let optimalSequence = [];
+    let minTotalDistance = Infinity;
+
+    for (let startIndex = 0; startIndex < directions.length; startIndex++) {
+      const sequence = [];
+      const remaining = [...directions];
+      let current = remaining.splice(startIndex, 1)[0];
+      sequence.push(current);
+
+      while (remaining.length) {
+        let nearestIndex = 0;
+        let nearestDistance = this.calculateDistance(current, remaining[0]);
+
+        for (let i = 1; i < remaining.length; i++) {
+          const distance = this.calculateDistance(current, remaining[i]);
+          if (distance < nearestDistance) {
+            nearestIndex = i;
+            nearestDistance = distance;
+          }
+        }
+
+        current = remaining.splice(nearestIndex, 1)[0];
+        sequence.push(current);
+      }
+
+      const totalDistance = this.calculateTotalDistance(sequence);
+      if (totalDistance < minTotalDistance) {
+        minTotalDistance = totalDistance;
+        optimalSequence = sequence;
+      }
+    }
+
+    return optimalSequence;
+  }
+
+  // Calculate the total distance of a sequence
+  private calculateTotalDistance(sequence: any[]): number {
+    let totalDistance = 0;
+    for (let i = 0; i < sequence.length - 1; i++) {
+      totalDistance += this.calculateDistance(sequence[i], sequence[i + 1]);
+    }
+    return totalDistance;
   }
 }

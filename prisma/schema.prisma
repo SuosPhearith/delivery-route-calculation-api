@@ -247,26 +247,19 @@ model Direction {
 }
 
 model DeliveryRouteCalculationDate {
-  id                                        Int                                         @id @default(autoincrement())
-  date                                      DateTime                                    @unique
-  DeliveryRouteCalculationDateGroupLocation DeliveryRouteCalculationDateGroupLocation[]
+  id       Int        @id @default(autoincrement())
+  date     DateTime   @unique
+  Location Location[]
 }
 
-model DeliveryRouteCalculationDateGroupLocation {
-  id                             Int                          @id @default(autoincrement())
-  deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id])
-  deliveryRouteCalculationDateId Int
-  groupLocation                  GroupLocation                @relation(fields: [groupLocationId], references: [id])
-  groupLocationId                Int
-}
-
-model GroupLocation {
-  id                                        Int                                         @id @default(autoincrement())
-  group                                     String                                      @unique
-  createdAt                                 DateTime                                    @default(now())
-  Location                                  Location[]
-  DeliveryRouteCalculationDateGroupLocation DeliveryRouteCalculationDateGroupLocation[]
-}
+// model GroupLocation {
+//   id                             Int                           @id @default(autoincrement())
+//   group                          String                        @unique
+//   createdAt                      DateTime                      @default(now())
+//   Location                       Location[]
+//   deliveryRouteCalculationDate   DeliveryRouteCalculationDate? @relation(fields: [deliveryRouteCalculationDateId], references: [id])
+//   deliveryRouteCalculationDateId Int?
+// }
 
 enum Priority {
   CRITICAL
@@ -284,41 +277,41 @@ enum PartOfDay {
 }
 
 model Location {
-  id              Int           @id @default(autoincrement())
-  zone            Zone?         @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  truckSize       TruckSize?    @relation(fields: [truckSizeId], references: [id], onDelete: SetNull)
-  documentType    String?
-  documentNumber  String?
-  documentDate    String?
-  sla             String?
-  uploaddTime     DateTime?
-  latitude        Float
-  longitude       Float
-  locationName    String
-  phone           String
-  se              String
-  homeNo          String?
-  streetNo        String?
-  village         String?
-  sangkat         String?
-  khan            String?
-  hotSpot         String?
-  direction       String?
-  area            String?
-  region          String?
-  division        String?
-  zoneId          Int?
-  truckSizeId     Int?
-  deliveryDate    DateTime
-  paymentTerm     String?
-  comments        String?
-  priority        Priority
-  partOfDay       PartOfDay
-  Requirement     Requirement[]
-  groupLocation   GroupLocation @relation(fields: [groupLocationId], references: [id], onDelete: Cascade)
-  groupLocationId Int
-  capacity        Float?
-  isAssign        Boolean       @default(false)
+  id                             Int                          @id @default(autoincrement())
+  zone                           Zone?                        @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  truckSize                      TruckSize?                   @relation(fields: [truckSizeId], references: [id], onDelete: SetNull)
+  documentType                   String?
+  documentNumber                 String?
+  documentDate                   String?
+  sla                            String?
+  uploaddTime                    DateTime?
+  latitude                       Float
+  longitude                      Float
+  locationName                   String
+  phone                          String
+  se                             String
+  homeNo                         String?
+  streetNo                       String?
+  village                        String?
+  sangkat                        String?
+  khan                           String?
+  hotSpot                        String?
+  direction                      String?
+  area                           String?
+  region                         String?
+  division                       String?
+  zoneId                         Int?
+  truckSizeId                    Int?
+  deliveryDate                   DateTime
+  paymentTerm                    String?
+  comments                       String?
+  priority                       Priority
+  partOfDay                      PartOfDay
+  Requirement                    Requirement[]
+  deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id], onDelete: Cascade)
+  capacity                       Float?
+  isAssign                       Boolean                      @default(false)
+  deliveryRouteCalculationDateId Int
 }
 
 model Requirement {
