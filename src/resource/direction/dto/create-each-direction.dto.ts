@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 
 export class CreateEachDirectionDto {
+  @Transform(({ value }) => String(value)) // Ensures the value is converted to a string
   @IsString()
   @IsNotEmpty()
   route: string;

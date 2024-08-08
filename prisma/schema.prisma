@@ -230,6 +230,7 @@ model GroupDirection {
   id        Int         @id @default(autoincrement())
   group     String      @unique
   note      String?
+  file      String?
   createdAt DateTime    @default(now())
   Direction Direction[]
 }

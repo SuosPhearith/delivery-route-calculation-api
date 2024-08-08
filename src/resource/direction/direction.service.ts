@@ -73,7 +73,7 @@ export class DirectionService {
       const filteredData: CreateEachDirectionDto[] = jsonData.map(
         (direction: CreateEachDirectionDto) => {
           return {
-            route: direction.route,
+            route: direction.route + '',
             lat: +direction.lat,
             long: +direction.long,
             name: direction.name,
@@ -89,6 +89,7 @@ export class DirectionService {
           data: {
             group: uuidv4(),
             note: createDirectionDto.note,
+            file: result.path,
           },
         });
 
@@ -157,6 +158,7 @@ export class DirectionService {
         return {
           id: groupDirection.id,
           group: groupDirection.group,
+          file: groupDirection.file,
           note: groupDirection.note,
           createdAt: groupDirection.createdAt,
           totalDirections,
