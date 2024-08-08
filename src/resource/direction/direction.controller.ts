@@ -38,8 +38,11 @@ export class DirectionController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.directionService.findOne(+id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('order') order: string,
+  ) {
+    return this.directionService.findOne(+id, order);
   }
 
   @Delete(':id')

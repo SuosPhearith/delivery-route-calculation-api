@@ -193,7 +193,7 @@ export class DirectionService {
       statusCode: HttpStatus.OK,
     };
   }
-  async findOne(groupDirectionId: number) {
+  async findOne(groupDirectionId: number, order: string) {
     const isGroupDirId = await this.prisma.groupDirection.findUnique({
       where: { id: groupDirectionId },
     });
@@ -210,13 +210,15 @@ export class DirectionService {
     if (directions.length === 0) {
       return [];
     }
-
     const groupedByRoute = this.groupByRoute(directions);
-    for (const group of groupedByRoute) {
-      group.directions = this.applyOptimalNNA(group.directions);
+    if (order === '') {
+      for (const group of groupedByRoute) {
+        group.directions = this.applyOptimalNNA(group.directions);
+      }
+      return groupedByRoute;
+    } else {
+      return groupedByRoute;
     }
-
-    return groupedByRoute;
   }
 
   // Group directions by route
