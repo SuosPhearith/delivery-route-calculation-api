@@ -14,7 +14,13 @@ import * as XLSX from 'xlsx';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateSubDrcDto } from './dto/create-sub-drc.dto';
-import { Location, PartOfDay, Priority, TruckStatus } from '@prisma/client';
+import {
+  Location,
+  PartOfDay,
+  Priority,
+  TruckSize,
+  TruckStatus,
+} from '@prisma/client';
 import { CreateTruckByDateDto } from './dto/create-truck-by-date.dto';
 import { ResponseCreateOrUpdateDTO } from 'src/global/dto/response.create.update.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -178,173 +184,158 @@ export class DrcDateService {
         }
       }
 
-      const filteredDataPromises = jsonData.map(async (direction: any) => {
-        const zone = await this.prisma.zone.findFirst({
-          where: { code: direction.zone },
-        });
-        const truckSize = await this.prisma.truckSize.findFirst({
-          where: { name: direction.truckSize },
-        });
-        if (!zone || !truckSize) {
-          throw new NotFoundException();
-        }
-
-        // Calculate capacity
-        const Meechiet = await this.prisma.caseSize.findFirst({
-          where: { name: 'Meechiet' },
-        });
-        const Vital500ml = await this.prisma.caseSize.findFirst({
-          where: { name: 'Vital500ml' },
-        });
-        if (!Meechiet || !Vital500ml) {
-          throw new NotFoundException();
-        }
-
-        const totalCapacity =
-          Meechiet.caseCubic * (direction.Meechiet * 1) +
-          Vital500ml.caseCubic * (direction.Vital500ml * 1);
-
-        const locationData = {
-          documentType: direction.documentType || '',
-          documentNumber: direction.documentNumber || '',
-          sla: direction.sla || '',
-          latitude: +direction.latitude,
-          longitude: +direction.longitude,
-          locationName: direction.locationName || '',
-          phone: direction.phone + '' || '',
-          se: direction.se || '',
-          homeNo: direction.homeNo || '',
-          streetNo: direction.streetNo || '',
-          village: direction.village || '',
-          sangkat: direction.sangkat || '',
-          khan: direction.khan || '',
-          hotSpot: direction.hotSpot || '',
-          direction: direction.direction || '',
-          area: direction.area || '',
-          region: direction.region || '',
-          division: direction.division || '',
-          zoneId: zone.id,
-          truckSizeId: truckSize.id,
-          deliveryDate: new Date(direction.deliveryDate),
-          paymentTerm: direction.paymentTerm || '',
-          comments: direction.comments || '',
-          priority: direction.priority || 'LOW',
-          partOfDay: direction.partOfDay || 'MORNING',
-          capacity: totalCapacity,
-          deliveryRouteCalculationDateId: id,
-        };
-
-        // Find existing locations with the same latitude, longitude, and deliveryRouteCalculationDateId
-        const existingLocations = await this.prisma.location.findMany({
-          where: {
-            latitude: locationData.latitude,
-            longitude: locationData.longitude,
-            deliveryRouteCalculationDateId: id,
-          },
-          orderBy: {
-            id: 'asc', // Ensuring the same order for easier handling
-          },
+      // Fetch all existing locations for the given deliveryRouteCalculationDateId
+      await this.prisma.$transaction(async (prisma) => {
+        const existingLocations = await prisma.location.findMany({
+          where: { deliveryRouteCalculationDateId: id },
         });
 
-        if (existingLocations.length > 0) {
-          if (totalCapacity <= truckSize.containerCubic) {
-            // New capacity fits into a single location, so update the first location and delete the rest
-            const updatedLocation = await this.prisma.location.update({
-              where: { id: existingLocations[0].id },
-              data: locationData,
+        const updatedLocationIds = new Set<number>();
+
+        const filteredDataPromises = jsonData.map(async (direction: any) => {
+          const zone = await prisma.zone.findFirst({
+            where: { code: direction.zone },
+          });
+          if (!zone) {
+            throw new NotFoundException();
+          }
+          let truckSize: TruckSize = await prisma.truckSize.findUnique({
+            where: { id: 2 },
+          });
+          if (direction.truckSize) {
+            const IsTruckSize = await prisma.truckSize.findFirst({
+              where: { name: direction.truckSize },
             });
-
-            // Delete any additional locations that were previously created
-            if (existingLocations.length > 1) {
-              const locationIdsToDelete = existingLocations
-                .slice(1)
-                .map((location) => location.id);
-
-              await this.prisma.location.deleteMany({
-                where: { id: { in: locationIdsToDelete } },
-              });
+            if (!IsTruckSize) {
+              throw new NotFoundException();
             }
+            truckSize = IsTruckSize;
+          }
 
-            return updatedLocation;
-          } else {
-            // New capacity requires multiple locations
-            let remainingCapacity = totalCapacity;
-            const updatedLocations = [];
+          const Meechiet = await prisma.caseSize.findFirst({
+            where: { name: 'Meechiet' },
+          });
+          const Vital500ml = await prisma.caseSize.findFirst({
+            where: { name: 'Vital500ml' },
+          });
+          if (!Meechiet || !Vital500ml) {
+            throw new NotFoundException();
+          }
 
-            for (const [
-              index,
-              existingLocation,
-            ] of existingLocations.entries()) {
-              const capacityToAssign = Math.min(
-                remainingCapacity,
-                truckSize.containerCubic,
-              );
-              const updatedLocation = await this.prisma.location.update({
+          const totalCapacity =
+            Meechiet.caseCubic * (direction.Meechiet * 1) +
+            Vital500ml.caseCubic * (direction.Vital500ml * 1);
+
+          const locationData = {
+            documentType: direction.documentType || '',
+            documentNumber: direction.documentNumber || '',
+            sla: direction.sla || '',
+            latitude: +direction.latitude,
+            longitude: +direction.longitude,
+            locationName: direction.locationName || '',
+            phone: direction.phone + '' || '',
+            se: direction.se || '',
+            homeNo: direction.homeNo || '',
+            streetNo: direction.streetNo || '',
+            village: direction.village || '',
+            sangkat: direction.sangkat || '',
+            khan: direction.khan || '',
+            hotSpot: direction.hotSpot || '',
+            direction: direction.direction || '',
+            area: direction.area || '',
+            region: direction.region || '',
+            division: direction.division || '',
+            zoneId: zone.id,
+            truckSizeId: truckSize?.id || null,
+            deliveryDate: new Date(direction.deliveryDate),
+            paymentTerm: direction.paymentTerm || '',
+            comments: direction.comments || '',
+            priority: direction.priority || 'LOW',
+            partOfDay: direction.partOfDay || 'MORNING',
+            capacity: totalCapacity,
+            deliveryRouteCalculationDateId: id,
+          };
+
+          const existingLocation = existingLocations.find(
+            (loc) =>
+              loc.latitude === locationData.latitude &&
+              loc.longitude === locationData.longitude &&
+              loc.deliveryRouteCalculationDateId === id,
+          );
+
+          if (existingLocation) {
+            // Recalculate capacity and split if necessary
+            if (totalCapacity <= truckSize.containerCubic) {
+              // Update existing location if capacity fits within one location
+              const updatedLocation = await prisma.location.update({
                 where: { id: existingLocation.id },
-                data: { ...locationData, capacity: capacityToAssign },
+                data: locationData,
               });
-              updatedLocations.push(updatedLocation);
-              remainingCapacity -= capacityToAssign;
+              updatedLocationIds.add(updatedLocation.id);
+              return updatedLocation;
+            } else {
+              // Delete the existing location and create new split locations
+              await prisma.location.delete({
+                where: { id: existingLocation.id },
+              });
 
-              // If we've fully allocated the capacity, delete any remaining locations
-              if (
-                remainingCapacity <= 0 &&
-                index < existingLocations.length - 1
-              ) {
-                const remainingLocations = existingLocations.slice(index + 1);
-                const remainingIdsToDelete = remainingLocations.map(
-                  (loc) => loc.id,
+              const createdLocations = [];
+              let remainingCapacity = totalCapacity;
+
+              while (remainingCapacity > 0) {
+                const capacityToAssign = Math.min(
+                  remainingCapacity,
+                  truckSize.containerCubic,
                 );
-                await this.prisma.location.deleteMany({
-                  where: { id: { in: remainingIdsToDelete } },
+                const newLocation = await prisma.location.create({
+                  data: { ...locationData, capacity: capacityToAssign },
                 });
-                break;
+                createdLocations.push(newLocation);
+                remainingCapacity -= capacityToAssign;
               }
-            }
 
-            // If there’s remaining capacity that hasn't been assigned, create new locations
+              return createdLocations;
+            }
+          } else {
+            // No existing location, create new ones based on the capacity
+            const createdLocations = [];
+            let remainingCapacity = totalCapacity;
+
             while (remainingCapacity > 0) {
               const capacityToAssign = Math.min(
                 remainingCapacity,
                 truckSize.containerCubic,
               );
-              const newLocation = await this.prisma.location.create({
+              const newLocation = await prisma.location.create({
                 data: { ...locationData, capacity: capacityToAssign },
               });
-              updatedLocations.push(newLocation);
+              createdLocations.push(newLocation);
               remainingCapacity -= capacityToAssign;
             }
 
-            return updatedLocations;
+            return createdLocations;
           }
-        } else {
-          // No existing location, create new ones based on the capacity
-          const createdLocations = [];
-          let remainingCapacity = totalCapacity;
+        });
 
-          while (remainingCapacity > 0) {
-            const capacityToAssign = Math.min(
-              remainingCapacity,
-              truckSize.containerCubic,
-            );
-            const newLocation = await this.prisma.location.create({
-              data: { ...locationData, capacity: capacityToAssign },
-            });
-            createdLocations.push(newLocation);
-            remainingCapacity -= capacityToAssign;
-          }
+        const allCreatedLocations = await Promise.all(filteredDataPromises);
+        const flattenedLocations = allCreatedLocations.flat();
 
-          return createdLocations;
+        // Delete any locations that were not updated or created
+        const locationIdsToDelete = existingLocations
+          .filter((loc) => !updatedLocationIds.has(loc.id))
+          .map((loc) => loc.id);
+
+        if (locationIdsToDelete.length > 0) {
+          await prisma.location.deleteMany({
+            where: { id: { in: locationIdsToDelete } },
+          });
         }
+
+        return {
+          message: 'Locations created/updated successfully',
+          locations: flattenedLocations,
+        };
       });
-
-      const allCreatedLocations = await Promise.all(filteredDataPromises);
-      const flattenedLocations = allCreatedLocations.flat();
-
-      return {
-        message: 'Locations created/updated successfully',
-        locations: flattenedLocations,
-      };
     } catch (error) {
       if (
         error instanceof PrismaClientKnownRequestError &&
@@ -357,333 +348,6 @@ export class DrcDateService {
       throw error;
     }
   }
-
-  // async createDrc(file: any, id: number) {
-  //   try {
-  //     const result = this.fileUploadService.handleFileUpload(file);
-  //     const jsonData = this.convertExcelToJson(result.path);
-
-  //     // Validate each DRC object
-  //     for (const drc of jsonData) {
-  //       const drcDto = plainToClass(CreateSubDrcDto, drc);
-  //       const errors = await validate(drcDto);
-
-  //       if (errors.length > 0) {
-  //         throw new HttpException(
-  //           {
-  //             message: 'Validation failed',
-  //             errors: errors
-  //               .map((err) => Object.values(err.constraints))
-  //               .flat(),
-  //           },
-  //           HttpStatus.BAD_REQUEST,
-  //         );
-  //       }
-  //     }
-
-  //     const filteredDataPromises = jsonData.map(async (direction: any) => {
-  //       const zone = await this.prisma.zone.findFirst({
-  //         where: { code: direction.zone },
-  //       });
-  //       const truckSize = await this.prisma.truckSize.findFirst({
-  //         where: { name: direction.truckSize },
-  //       });
-  //       if (!zone || !truckSize) {
-  //         throw new NotFoundException();
-  //       }
-
-  //       // Calculate capacity
-  //       const Meechiet = await this.prisma.caseSize.findFirst({
-  //         where: { name: 'Meechiet' },
-  //       });
-  //       const Vital500ml = await this.prisma.caseSize.findFirst({
-  //         where: { name: 'Vital500ml' },
-  //       });
-  //       if (!Meechiet || !Vital500ml) {
-  //         throw new NotFoundException();
-  //       }
-
-  //       const totalCapacity =
-  //         Meechiet.caseCubic * (direction.Meechiet * 1) +
-  //         Vital500ml.caseCubic * (direction.Vital500ml * 1);
-
-  //       const truckSizeCubicCapacity = truckSize.containerCubic;
-
-  //       // Initialize an array to hold split location data
-  //       const locationDataList = [];
-
-  //       // If total capacity is greater than the truck's cubic capacity, split it into multiple locations
-  //       let remainingCapacity = totalCapacity;
-  //       while (remainingCapacity > 0) {
-  //         const currentCapacity = Math.min(
-  //           remainingCapacity,
-  //           truckSizeCubicCapacity,
-  //         );
-  //         const locationData = {
-  //           documentType: direction.documentType || '',
-  //           documentNumber: direction.documentNumber || '',
-  //           sla: direction.sla || '',
-  //           latitude: +direction.latitude,
-  //           longitude: +direction.longitude,
-  //           locationName: direction.locationName || '',
-  //           phone: direction.phone + '' || '',
-  //           se: direction.se || '',
-  //           homeNo: direction.homeNo || '',
-  //           streetNo: direction.streetNo || '',
-  //           village: direction.village || '',
-  //           sangkat: direction.sangkat || '',
-  //           khan: direction.khan || '',
-  //           hotSpot: direction.hotSpot || '',
-  //           direction: direction.direction || '',
-  //           area: direction.area || '',
-  //           region: direction.region || '',
-  //           division: direction.division || '',
-  //           zoneId: zone.id,
-  //           truckSizeId: truckSize.id,
-  //           deliveryDate: new Date(direction.deliveryDate),
-  //           paymentTerm: direction.paymentTerm || '',
-  //           comments: direction.comments || '',
-  //           priority: direction.priority || 'LOW',
-  //           partOfDay: direction.partOfDay || 'MORNING',
-  //           capacity: currentCapacity,
-  //           deliveryRouteCalculationDateId: id,
-  //         };
-
-  //         locationDataList.push(locationData);
-  //         remainingCapacity -= currentCapacity;
-  //       }
-
-  //       // Store all split locations as new entries
-  //       const locationPromises = locationDataList.map(async (locationData) => {
-  //         return this.prisma.location.create({ data: locationData });
-  //       });
-
-  //       return Promise.all(locationPromises);
-  //     });
-
-  //     await Promise.all(filteredDataPromises);
-
-  //     return {
-  //       message: 'Locations created/updated successfully',
-  //     };
-  //   } catch (error) {
-  //     console.error('Error during data insertion:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // update when existing location
-  // async createDrc(file: any, id: number) {
-  //   try {
-  //     const result = this.fileUploadService.handleFileUpload(file);
-  //     const jsonData = this.convertExcelToJson(result.path);
-
-  //     // Validate each DRC object
-  //     for (const drc of jsonData) {
-  //       const drcDto = plainToClass(CreateSubDrcDto, drc);
-  //       const errors = await validate(drcDto);
-
-  //       if (errors.length > 0) {
-  //         throw new HttpException(
-  //           {
-  //             message: 'Validation failed',
-  //             errors: errors
-  //               .map((err) => Object.values(err.constraints))
-  //               .flat(),
-  //           },
-  //           HttpStatus.BAD_REQUEST,
-  //         );
-  //       }
-  //     }
-
-  //     const filteredDataPromises = jsonData.map(async (direction: any) => {
-  //       const zone = await this.prisma.zone.findFirst({
-  //         where: { code: direction.zone },
-  //       });
-  //       const truckSize = await this.prisma.truckSize.findFirst({
-  //         where: { name: direction.truckSize },
-  //       });
-  //       if (!zone || !truckSize) {
-  //         throw new NotFoundException();
-  //       }
-
-  //       // Calculate capacity
-  //       const Meechiet = await this.prisma.caseSize.findFirst({
-  //         where: { name: 'Meechiet' },
-  //       });
-  //       const Vital500ml = await this.prisma.caseSize.findFirst({
-  //         where: { name: 'Vital500ml' },
-  //       });
-  //       if (!Meechiet || !Vital500ml) {
-  //         throw new NotFoundException();
-  //       }
-
-  //       const totalCapacity =
-  //         Meechiet.caseCubic * (direction.Meechiet * 1) +
-  //         Vital500ml.caseCubic * (direction.Vital500ml * 1);
-
-  //       const locationData = {
-  //         documentType: direction.documentType || '',
-  //         documentNumber: direction.documentNumber || '',
-  //         sla: direction.sla || '',
-  //         latitude: +direction.latitude,
-  //         longitude: +direction.longitude,
-  //         locationName: direction.locationName || '',
-  //         phone: direction.phone + '' || '',
-  //         se: direction.se || '',
-  //         homeNo: direction.homeNo || '',
-  //         streetNo: direction.streetNo || '',
-  //         village: direction.village || '',
-  //         sangkat: direction.sangkat || '',
-  //         khan: direction.khan || '',
-  //         hotSpot: direction.hotSpot || '',
-  //         direction: direction.direction || '',
-  //         area: direction.area || '',
-  //         region: direction.region || '',
-  //         division: direction.division || '',
-  //         zoneId: zone.id,
-  //         truckSizeId: truckSize.id,
-  //         deliveryDate: new Date(direction.deliveryDate),
-  //         paymentTerm: direction.paymentTerm || '',
-  //         comments: direction.comments || '',
-  //         priority: direction.priority || 'LOW',
-  //         partOfDay: direction.partOfDay || 'MORNING',
-  //         capacity: totalCapacity,
-  //         deliveryRouteCalculationDateId: id,
-  //       };
-
-  //       // Check if a location already exists with the same latitude, longitude, and deliveryRouteCalculationDateId
-  //       const existingLocation = await this.prisma.location.findFirst({
-  //         where: {
-  //           latitude: locationData.latitude,
-  //           longitude: locationData.longitude,
-  //           deliveryRouteCalculationDateId: id,
-  //         },
-  //       });
-
-  //       if (existingLocation) {
-  //         // Update the existing location with the latest information
-  //         return this.prisma.location.update({
-  //           where: { id: existingLocation.id },
-  //           data: locationData,
-  //         });
-  //       } else {
-  //         // Create a new location
-  //         return this.prisma.location.create({ data: locationData });
-  //       }
-  //     });
-
-  //     await Promise.all(filteredDataPromises);
-
-  //     return {
-  //       message: 'Locations created/updated successfully',
-  //     };
-  //   } catch (error) {
-  //     console.error('Error during data insertion:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // simple create
-  // async createDrc(file: any, id: number) {
-  //   try {
-  //     const result = this.fileUploadService.handleFileUpload(file);
-  //     const jsonData = this.convertExcelToJson(result.path);
-
-  //     // Validate each drc object
-  //     for (const drc of jsonData) {
-  //       const drcDto = plainToClass(CreateSubDrcDto, drc);
-  //       const errors = await validate(drcDto);
-
-  //       if (errors.length > 0) {
-  //         throw new HttpException(
-  //           {
-  //             message: 'Validation failed',
-  //             errors: errors
-  //               .map((err) => Object.values(err.constraints))
-  //               .flat(),
-  //           },
-  //           HttpStatus.BAD_REQUEST,
-  //         );
-  //       }
-  //     }
-
-  //     const filteredDataPromises = jsonData.map(async (direction: any) => {
-  //       const zone = await this.prisma.zone.findFirst({
-  //         where: { code: direction.zone },
-  //       });
-  //       const truckSize = await this.prisma.truckSize.findFirst({
-  //         where: { name: direction.truckSize },
-  //       });
-  //       if (!zone || !truckSize) {
-  //         throw new NotFoundException();
-  //       }
-  //       // calculate capacity
-  //       const Meechiet = await this.prisma.caseSize.findFirst({
-  //         where: { name: 'Meechiet' },
-  //       });
-  //       const Vital500ml = await this.prisma.caseSize.findFirst({
-  //         where: { name: 'Vital500ml' },
-  //       });
-  //       // console.log(Meechiet);
-  //       if (!Meechiet || !Vital500ml) {
-  //         throw new NotFoundException();
-  //       }
-
-  //       const totalCapacity =
-  //         Meechiet.caseCubic * (direction.Meechiet * 1) +
-  //         Vital500ml.caseCubic * (direction.Vital500ml * 1);
-  //       return {
-  //         documentType: direction.documentType || '',
-  //         documentNumber: direction.documentNumber || '',
-  //         sla: direction.sla || '',
-  //         latitude: +direction.latitude,
-  //         longitude: +direction.longitude,
-  //         locationName: direction.locationName || '',
-  //         phone: direction.phone + '' || '',
-  //         se: direction.se || '',
-  //         homeNo: direction.homeNo || '',
-  //         streetNo: direction.streetNo || '',
-  //         village: direction.village || '',
-  //         sangkat: direction.sangkat || '',
-  //         khan: direction.khan || '',
-  //         hotSpot: direction.hotSpot || '',
-  //         direction: direction.direction || '',
-  //         area: direction.area || '',
-  //         region: direction.region || '',
-  //         division: direction.division || '',
-  //         zoneId: zone ? zone.id : null,
-  //         truckSizeId: truckSize ? truckSize.id : null,
-  //         deliveryDate: new Date('2023-11-15T10:23:45.678Z'),
-  //         paymentTerm: direction.paymentTerm || '',
-  //         comments: direction.comments || '',
-  //         priority: direction.priority || 'LOW',
-  //         partOfDay: direction.partOfDay || 'MORNING',
-  //         capacity: totalCapacity,
-  //       };
-  //     });
-
-  //     const filteredData = await Promise.all(filteredDataPromises);
-
-  //     // Map filteredData to include groupDirectionId
-  //     const dataInsert = filteredData.map((drc) => ({
-  //       ...drc,
-  //       deliveryRouteCalculationDateId: id,
-  //     }));
-
-  //     // Insert multiple directions at once
-  //     await this.prisma.location.createMany({
-  //       data: dataInsert,
-  //     });
-
-  //     return {
-  //       message: 'created successfully',
-  //     };
-  //   } catch (error) {
-  //     console.error('Error during data insertion:', error);
-  //     throw error;
-  //   }
-  // }
 
   async findOne(id: number) {
     return 'hello ' + id;

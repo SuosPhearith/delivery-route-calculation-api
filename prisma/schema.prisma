@@ -336,7 +336,7 @@ model AssignLocationToTruck {
   locationId                     Int
   truckByDate                    TruckByDate                  @relation(fields: [truckByDateId], references: [id])
   truckByDateId                  Int
-  deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id])
+  deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id], onDelete: Cascade)
   deliveryRouteCalculationDateId Int
 
   @@unique([locationId, deliveryRouteCalculationDateId]) // Unique composite index for locationId and deliveryRouteCalculationDateId
