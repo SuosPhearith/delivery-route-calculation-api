@@ -312,9 +312,9 @@ model Location {
 
 model Requirement {
   id         Int      @id @default(autoincrement())
-  location   Location @relation(fields: [locationId], references: [id])
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
   locationId Int
-  caseSize   CaseSize @relation(fields: [caseSizeId], references: [id])
+  caseSize   CaseSize @relation(fields: [caseSizeId], references: [id], onDelete: Cascade)
   caseSizeId Int
 }
 

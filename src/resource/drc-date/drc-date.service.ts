@@ -161,6 +161,7 @@ export class DrcDateService {
     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetNames[0]]);
     return jsonData;
   }
+
   async createDrc(file: any, id: number) {
     try {
       const result = this.fileUploadService.handleFileUpload(file);
@@ -183,16 +184,81 @@ export class DrcDateService {
           );
         }
       }
-
       // Fetch all existing locations for the given deliveryRouteCalculationDateId
       await this.prisma.$transaction(async (prisma) => {
-        const existingLocations = await prisma.location.findMany({
+        const oldLocations = await prisma.location.findMany({
           where: { deliveryRouteCalculationDateId: id },
         });
+        // check to delete
+        const oldLocationsForCheck = await prisma.location.findMany({
+          where: { deliveryRouteCalculationDateId: id },
+          select: {
+            id: true,
+            latitude: true,
+            longitude: true,
+            deliveryRouteCalculationDateId: true,
+          },
+        });
+        const filteredIds = oldLocationsForCheck
+          .filter((oldLoc) => {
+            // Check if the location in oldLocationsForCheck exists in jsonData
+            const existsInJsonData = jsonData.some(
+              (newLoc) =>
+                newLoc.latitude === oldLoc.latitude &&
+                newLoc.longitude === oldLoc.longitude,
+            );
 
-        const updatedLocationIds = new Set<number>();
+            // Return true if it does NOT exist in jsonData (i.e., we want to keep it)
+            return !existsInJsonData;
+          })
+          .map((oldLoc) => oldLoc.id); // Extract the ids of the filtered locations
 
-        const filteredDataPromises = jsonData.map(async (direction: any) => {
+        if (filteredIds.length > 0) {
+          // console.log(filteredIds);
+          // for (const location of filteredIds) {
+          //   console.log(location + '  ' + id);
+          //   // find to delete in assign
+          //   const isAssignedLocation =
+          //     await prisma.assignLocationToTruck.findFirst({
+          //       where: {
+          //         locationId: location,
+          //         deliveryRouteCalculationDateId: id,
+          //       },
+          //     });
+          //   console.log(isAssignedLocation);
+          //   if (isAssignedLocation) {
+          //     await prisma.assignLocationToTruck.delete({
+          //       where: {
+          //         id: isAssignedLocation.id,
+          //       },
+          //     });
+          //   }
+          //   await this.prisma.location.delete({
+          //     where: {
+          //       id: location,
+          //     },
+          //   });
+          // }
+          for (const location of filteredIds) {
+            console.log(location + '  ' + id);
+
+            // Delete all related AssignLocationToTruck entries before deleting the location
+            await prisma.assignLocationToTruck.deleteMany({
+              where: {
+                locationId: location,
+                deliveryRouteCalculationDateId: id,
+              },
+            });
+
+            // Now delete the location
+            await prisma.location.delete({
+              where: {
+                id: location,
+              },
+            });
+          }
+        }
+        for (const direction of jsonData) {
           const zone = await prisma.zone.findFirst({
             where: { code: direction.zone },
           });
@@ -255,96 +321,125 @@ export class DrcDateService {
             capacity: totalCapacity,
             deliveryRouteCalculationDateId: id,
           };
-
-          const existingLocation = existingLocations.find(
+          const numberOfSplite = Math.ceil(
+            totalCapacity / truckSize.containerCubic,
+          );
+          const matchingLocation = oldLocations.find(
             (loc) =>
               loc.latitude === locationData.latitude &&
               loc.longitude === locationData.longitude &&
-              loc.deliveryRouteCalculationDateId === id,
+              loc.deliveryRouteCalculationDateId ===
+                locationData.deliveryRouteCalculationDateId,
           );
-
-          if (existingLocation) {
-            // Recalculate capacity and split if necessary
-            if (totalCapacity <= truckSize.containerCubic) {
-              // Update existing location if capacity fits within one location
-              const updatedLocation = await prisma.location.update({
-                where: { id: existingLocation.id },
-                data: locationData,
+          if (matchingLocation) {
+            const { capacity, ...updateData } = locationData;
+            const oldCapacity = await prisma.location.findMany({
+              where: {
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                deliveryRouteCalculationDateId:
+                  locationData.deliveryRouteCalculationDateId,
+              },
+              select: {
+                capacity: true,
+                id: true,
+              },
+            });
+            // Sum the capacities
+            const totalOldCapacity = oldCapacity.reduce(
+              (total, { capacity }) => total + capacity,
+              0,
+            );
+            // Extract an array of ids
+            const ids = oldCapacity.map(({ id }) => id);
+            const epsilon = 1e-10; // A small tolerance value
+            const areEqual = Math.abs(totalOldCapacity - capacity) < epsilon;
+            if (areEqual) {
+              await prisma.location.updateMany({
+                where: {
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  deliveryRouteCalculationDateId:
+                    locationData.deliveryRouteCalculationDateId,
+                },
+                data: updateData,
               });
-              updatedLocationIds.add(updatedLocation.id);
-              return updatedLocation;
             } else {
-              // Delete the existing location and create new split locations
-              await prisma.location.delete({
-                where: { id: existingLocation.id },
+              // unassign
+              const getAssignedIds =
+                await prisma.assignLocationToTruck.findMany({
+                  where: { deliveryRouteCalculationDateId: id },
+                  select: { locationId: true },
+                });
+              // Extract an array of ids
+              const assignedIds = getAssignedIds.map(
+                ({ locationId }) => locationId,
+              );
+              const filteredIds: UnassignDto = {
+                locationIds: ids.filter((id) => assignedIds.includes(id)),
+              };
+              if (assignedIds.length > 0) {
+                await this.unassignLocationToTruck(id, filteredIds);
+              }
+              await prisma.location.deleteMany({
+                where: {
+                  latitude: locationData.latitude,
+                  longitude: locationData.longitude,
+                  deliveryRouteCalculationDateId:
+                    locationData.deliveryRouteCalculationDateId,
+                },
               });
+              if (numberOfSplite === 1) {
+                await prisma.location.create({
+                  data: { ...locationData, capacity: totalCapacity },
+                });
+              } else if (numberOfSplite > 1) {
+                let remainingCapacity = totalCapacity;
 
-              const createdLocations = [];
+                for (let i = 0; i < numberOfSplite; i++) {
+                  // Determine the capacity for the current split
+                  const currentCapacity = Math.min(
+                    remainingCapacity,
+                    truckSize.containerCubic,
+                  );
+
+                  // Reduce the remaining capacity by the current split's capacity
+                  remainingCapacity -= currentCapacity;
+
+                  await prisma.location.create({
+                    data: { ...locationData, capacity: currentCapacity },
+                  });
+                }
+              }
+            }
+          } else {
+            if (numberOfSplite === 1) {
+              await prisma.location.create({
+                data: { ...locationData, capacity: totalCapacity },
+              });
+            } else if (numberOfSplite > 1) {
               let remainingCapacity = totalCapacity;
 
-              while (remainingCapacity > 0) {
-                const capacityToAssign = Math.min(
+              for (let i = 0; i < numberOfSplite; i++) {
+                // Determine the capacity for the current split
+                const currentCapacity = Math.min(
                   remainingCapacity,
                   truckSize.containerCubic,
                 );
-                const newLocation = await prisma.location.create({
-                  data: { ...locationData, capacity: capacityToAssign },
+
+                // Reduce the remaining capacity by the current split's capacity
+                remainingCapacity -= currentCapacity;
+
+                await prisma.location.create({
+                  data: { ...locationData, capacity: currentCapacity },
                 });
-                createdLocations.push(newLocation);
-                remainingCapacity -= capacityToAssign;
               }
-
-              return createdLocations;
             }
-          } else {
-            // No existing location, create new ones based on the capacity
-            const createdLocations = [];
-            let remainingCapacity = totalCapacity;
-
-            while (remainingCapacity > 0) {
-              const capacityToAssign = Math.min(
-                remainingCapacity,
-                truckSize.containerCubic,
-              );
-              const newLocation = await prisma.location.create({
-                data: { ...locationData, capacity: capacityToAssign },
-              });
-              createdLocations.push(newLocation);
-              remainingCapacity -= capacityToAssign;
-            }
-
-            return createdLocations;
           }
-        });
-
-        const allCreatedLocations = await Promise.all(filteredDataPromises);
-        const flattenedLocations = allCreatedLocations.flat();
-
-        // Delete any locations that were not updated or created
-        const locationIdsToDelete = existingLocations
-          .filter((loc) => !updatedLocationIds.has(loc.id))
-          .map((loc) => loc.id);
-
-        if (locationIdsToDelete.length > 0) {
-          await prisma.location.deleteMany({
-            where: { id: { in: locationIdsToDelete } },
-          });
         }
-
-        return {
-          message: 'Locations created/updated successfully',
-          locations: flattenedLocations,
-        };
       });
+      return 'Created successfully';
     } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === 'P2003'
-      ) {
-        throw new BadRequestException(
-          'Please Unassign wrong locations before reinput',
-        );
-      }
       throw error;
     }
   }
@@ -382,7 +477,7 @@ export class DrcDateService {
       throw new BadRequestException();
     }
 
-    return await this.prisma.truckByDate.findMany({
+    const response = await this.prisma.truckByDate.findMany({
       where: {
         truck: {
           ...(truckSizeId && { truckSizeId: +truckSizeId }),
@@ -412,10 +507,154 @@ export class DrcDateService {
             truckOwnershipType: true,
           },
         },
+        AssignLocationToTruck: {
+          include: {
+            location: {
+              select: {
+                partOfDay: true,
+                capacity: true,
+              },
+            },
+          },
+        },
       },
     });
+    const transformedResponse = response.map((truck) => {
+      const AssignLocationToTruck = truck.AssignLocationToTruck.reduce(
+        (acc, item) => {
+          const { partOfDay, capacity } = item.location;
+          if (!acc[partOfDay]) {
+            acc[partOfDay] = { number_of_delivery: 0, total_capacity: 0 };
+          }
+          acc[partOfDay].number_of_delivery += 1;
+          acc[partOfDay].total_capacity += capacity;
+          return acc;
+        },
+        {},
+      );
+
+      return {
+        ...truck,
+        partOfDays: AssignLocationToTruck,
+      };
+    });
+
+    return transformedResponse;
   }
 
+  // async findAllLocations(params: {
+  //   deliveryRouteCalculationDateId: number;
+  //   zoneId?: number;
+  //   truckSizeId?: number;
+  //   partOfDay?: PartOfDay;
+  //   priority?: Priority;
+  //   capacity?: number;
+  //   query?: string;
+  //   isAssign?: string;
+  //   truckByDateId?: string;
+  // }): Promise<Location[]> {
+  //   const {
+  //     deliveryRouteCalculationDateId,
+  //     zoneId,
+  //     truckSizeId,
+  //     partOfDay,
+  //     priority,
+  //     capacity,
+  //     query,
+  //     isAssign,
+  //     truckByDateId,
+  //   } = params;
+
+  //   if (!deliveryRouteCalculationDateId) {
+  //     throw new BadRequestException();
+  //   }
+
+  //   if (truckByDateId) {
+  //     const locations = await this.prisma.location.findMany({
+  //       where: {
+  //         AssignLocationToTruck: {
+  //           some: {
+  //             truckByDateId: +truckByDateId,
+  //           },
+  //         },
+  //       },
+  //       include: {
+  //         zone: true,
+  //         truckSize: true,
+  //       },
+  //     });
+
+  //     // Set isAssign to true for all locations in the response
+  //     const updatedLocations = locations.map((location) => ({
+  //       ...location,
+  //       isAssign: true,
+  //     }));
+
+  //     return updatedLocations;
+  //   } else {
+  //     // Fetch locations
+  //     const response = await this.prisma.location.findMany({
+  //       where: {
+  //         deliveryRouteCalculationDateId: +deliveryRouteCalculationDateId,
+  //         ...(zoneId && { zoneId: +zoneId }),
+  //         ...(truckSizeId && { truckSizeId: +truckSizeId }),
+  //         ...(partOfDay && { partOfDay }),
+  //         ...(priority && { priority }),
+  //         ...(capacity && { capacity: { lte: +capacity } }),
+  //         OR: query
+  //           ? [
+  //               {
+  //                 phone: {
+  //                   contains: query,
+  //                   mode: 'insensitive',
+  //                 },
+  //               },
+  //               {
+  //                 se: {
+  //                   contains: query,
+  //                   mode: 'insensitive',
+  //                 },
+  //               },
+  //             ]
+  //           : undefined,
+  //       },
+  //       include: {
+  //         zone: true,
+  //         truckSize: true,
+  //       },
+  //     });
+
+  //     // Fetch assigned locations
+  //     const AssignLocationToTruckData =
+  //       await this.prisma.assignLocationToTruck.findMany({
+  //         where: {
+  //           deliveryRouteCalculationDateId: +deliveryRouteCalculationDateId,
+  //         },
+  //       });
+
+  //     // Set isAssign dynamically based on the fetched data
+  //     const assignedLocationIds = new Set(
+  //       AssignLocationToTruckData.map((item) => item.locationId),
+  //     );
+
+  //     const updatedResponse = response.map((location) => {
+  //       return {
+  //         ...location,
+  //         isAssign: assignedLocationIds.has(location.id),
+  //       };
+  //     });
+
+  //     // Filter response based on isAssign if the parameter was provided
+  //     if (isAssign !== undefined) {
+  //       const isAssignValue = isAssign === 'true';
+  //       return updatedResponse.filter(
+  //         (location) => location.isAssign === isAssignValue,
+  //       );
+  //     }
+
+  //     return updatedResponse;
+  //   }
+  // }
   async findAllLocations(params: {
     deliveryRouteCalculationDateId: number;
     zoneId?: number;
@@ -443,6 +682,21 @@ export class DrcDateService {
       throw new BadRequestException();
     }
 
+    const priorityOrder = {
+      CRITICAL: 1,
+      HIGH: 2,
+      MEDIUM: 3,
+      LOW: 4,
+      TRIVIAL: 5,
+    };
+
+    const partOfDayOrder = {
+      MORNING: 1,
+      AFTERNOON: 2,
+      EVENING: 3,
+      NIGHT: 4,
+    };
+
     if (truckByDateId) {
       const locations = await this.prisma.location.findMany({
         where: {
@@ -458,15 +712,22 @@ export class DrcDateService {
         },
       });
 
-      // Set isAssign to true for all locations in the response
       const updatedLocations = locations.map((location) => ({
         ...location,
         isAssign: true,
       }));
 
+      // Sort the locations based on partOfDay and priority
+      updatedLocations.sort((a, b) => {
+        const partOfDayComparison =
+          partOfDayOrder[a.partOfDay] - partOfDayOrder[b.partOfDay];
+        if (partOfDayComparison !== 0) return partOfDayComparison;
+
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+
       return updatedLocations;
     } else {
-      // Fetch locations
       const response = await this.prisma.location.findMany({
         where: {
           deliveryRouteCalculationDateId: +deliveryRouteCalculationDateId,
@@ -498,7 +759,6 @@ export class DrcDateService {
         },
       });
 
-      // Fetch assigned locations
       const AssignLocationToTruckData =
         await this.prisma.assignLocationToTruck.findMany({
           where: {
@@ -506,7 +766,6 @@ export class DrcDateService {
           },
         });
 
-      // Set isAssign dynamically based on the fetched data
       const assignedLocationIds = new Set(
         AssignLocationToTruckData.map((item) => item.locationId),
       );
@@ -518,7 +777,15 @@ export class DrcDateService {
         };
       });
 
-      // Filter response based on isAssign if the parameter was provided
+      // Sort the locations based on partOfDay and priority
+      updatedResponse.sort((a, b) => {
+        const partOfDayComparison =
+          partOfDayOrder[a.partOfDay] - partOfDayOrder[b.partOfDay];
+        if (partOfDayComparison !== 0) return partOfDayComparison;
+
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+
       if (isAssign !== undefined) {
         const isAssignValue = isAssign === 'true';
         return updatedResponse.filter(
