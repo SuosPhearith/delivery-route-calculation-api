@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseIntPipe,
+  Patch,
 } from '@nestjs/common';
 import { DrcDateService } from './drc-date.service';
 import { CreateDrcDateDto } from './dto/create-drc-date.dto';
@@ -20,6 +21,8 @@ import { File as MulterFile } from 'multer';
 import { PartOfDay, Priority, TruckStatus } from '@prisma/client';
 import { CreateTruckByDateDto } from './dto/create-truck-by-date.dto';
 import { UnassignDto } from './dto/unassign-drc.dto';
+import { DeleteLocationDrcDto } from './dto/delete-location-drc.dto';
+import { UpdatePartOfDayDto } from './dto/update-part-of-day.dto';
 
 @Controller('api/v1/drc-date')
 export class DrcDateController {
@@ -127,5 +130,23 @@ export class DrcDateController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return await this.drcDateService.unassignLocationToTruck(+id, unassignDto);
+  }
+
+  @Delete('delete-locations-drc/route')
+  async deleteLocationDrc(@Body() deleteLocationDrcDto: DeleteLocationDrcDto) {
+    return await this.drcDateService.deleteLocationDrc(deleteLocationDrcDto);
+  }
+
+  @Patch('update-location-part-of-day/:id')
+  async updateLocationPartOfDay(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePartOfDayDto: UpdatePartOfDayDto,
+  ) {
+    return this.drcDateService.updateLocationPartOfDay(+id, updatePartOfDayDto);
+  }
+
+  @Get('get-all-warehouses/route')
+  async getAllWarehouse() {
+    return this.drcDateService.getAllWarehouse();
   }
 }

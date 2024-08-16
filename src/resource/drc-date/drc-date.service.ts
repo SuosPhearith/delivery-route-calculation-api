@@ -25,6 +25,8 @@ import { CreateTruckByDateDto } from './dto/create-truck-by-date.dto';
 import { ResponseCreateOrUpdateDTO } from 'src/global/dto/response.create.update.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { UnassignDto } from './dto/unassign-drc.dto';
+import { DeleteLocationDrcDto } from './dto/delete-location-drc.dto';
+import { UpdatePartOfDayDto } from './dto/update-part-of-day.dto';
 
 @Injectable()
 export class DrcDateService {
@@ -184,12 +186,13 @@ export class DrcDateService {
           );
         }
       }
-      // Fetch all existing locations for the given deliveryRouteCalculationDateId
+
       await this.prisma.$transaction(async (prisma) => {
         const oldLocations = await prisma.location.findMany({
           where: { deliveryRouteCalculationDateId: id },
         });
-        // check to delete
+
+        // Check locations to delete
         const oldLocationsForCheck = await prisma.location.findMany({
           where: { deliveryRouteCalculationDateId: id },
           select: {
@@ -199,49 +202,20 @@ export class DrcDateService {
             deliveryRouteCalculationDateId: true,
           },
         });
+
         const filteredIds = oldLocationsForCheck
           .filter((oldLoc) => {
-            // Check if the location in oldLocationsForCheck exists in jsonData
             const existsInJsonData = jsonData.some(
               (newLoc) =>
                 newLoc.latitude === oldLoc.latitude &&
                 newLoc.longitude === oldLoc.longitude,
             );
-
-            // Return true if it does NOT exist in jsonData (i.e., we want to keep it)
             return !existsInJsonData;
           })
-          .map((oldLoc) => oldLoc.id); // Extract the ids of the filtered locations
+          .map((oldLoc) => oldLoc.id);
 
         if (filteredIds.length > 0) {
-          // console.log(filteredIds);
-          // for (const location of filteredIds) {
-          //   console.log(location + '  ' + id);
-          //   // find to delete in assign
-          //   const isAssignedLocation =
-          //     await prisma.assignLocationToTruck.findFirst({
-          //       where: {
-          //         locationId: location,
-          //         deliveryRouteCalculationDateId: id,
-          //       },
-          //     });
-          //   console.log(isAssignedLocation);
-          //   if (isAssignedLocation) {
-          //     await prisma.assignLocationToTruck.delete({
-          //       where: {
-          //         id: isAssignedLocation.id,
-          //       },
-          //     });
-          //   }
-          //   await this.prisma.location.delete({
-          //     where: {
-          //       id: location,
-          //     },
-          //   });
-          // }
           for (const location of filteredIds) {
-            console.log(location + '  ' + id);
-
             // Delete all related AssignLocationToTruck entries before deleting the location
             await prisma.assignLocationToTruck.deleteMany({
               where: {
@@ -258,6 +232,7 @@ export class DrcDateService {
             });
           }
         }
+
         for (const direction of jsonData) {
           const zone = await prisma.zone.findFirst({
             where: { code: direction.zone },
@@ -265,9 +240,11 @@ export class DrcDateService {
           if (!zone) {
             throw new NotFoundException();
           }
+
           let truckSize: TruckSize = await prisma.truckSize.findUnique({
             where: { id: 2 },
           });
+
           if (direction.truckSize) {
             const IsTruckSize = await prisma.truckSize.findFirst({
               where: { name: direction.truckSize },
@@ -278,19 +255,30 @@ export class DrcDateService {
             truckSize = IsTruckSize;
           }
 
-          const Meechiet = await prisma.caseSize.findFirst({
-            where: { name: 'Meechiet' },
-          });
-          const Vital500ml = await prisma.caseSize.findFirst({
-            where: { name: 'Vital500ml' },
-          });
-          if (!Meechiet || !Vital500ml) {
-            throw new NotFoundException();
+          // Fetch all case sizes dynamically
+          const caseSizes = await prisma.caseSize.findMany();
+
+          if (!caseSizes || caseSizes.length === 0) {
+            throw new NotFoundException('No case sizes found');
           }
 
-          const totalCapacity =
-            Meechiet.caseCubic * (direction.Meechiet * 1) +
-            Vital500ml.caseCubic * (direction.Vital500ml * 1);
+          // Calculate total capacity dynamically
+          let totalCapacity = 0;
+          const requirements = [];
+
+          caseSizes.forEach((caseSize) => {
+            const caseName = caseSize.name as keyof typeof direction;
+            const caseQuantity = direction[caseName] as number;
+
+            if (caseQuantity && caseSize.caseCubic) {
+              totalCapacity += caseSize.caseCubic * caseQuantity;
+              requirements.push({
+                locationId: 0, // Placeholder, will be updated after creating the location
+                caseSizeId: caseSize.id,
+                amount: caseQuantity,
+              });
+            }
+          });
 
           const locationData = {
             documentType: direction.documentType || '',
@@ -321,9 +309,11 @@ export class DrcDateService {
             capacity: totalCapacity,
             deliveryRouteCalculationDateId: id,
           };
+
           const numberOfSplite = Math.ceil(
             totalCapacity / truckSize.containerCubic,
           );
+
           const matchingLocation = oldLocations.find(
             (loc) =>
               loc.latitude === locationData.latitude &&
@@ -331,6 +321,7 @@ export class DrcDateService {
               loc.deliveryRouteCalculationDateId ===
                 locationData.deliveryRouteCalculationDateId,
           );
+
           if (matchingLocation) {
             const { capacity, ...updateData } = locationData;
             const oldCapacity = await prisma.location.findMany({
@@ -345,15 +336,17 @@ export class DrcDateService {
                 id: true,
               },
             });
+
             // Sum the capacities
             const totalOldCapacity = oldCapacity.reduce(
               (total, { capacity }) => total + capacity,
               0,
             );
-            // Extract an array of ids
+
             const ids = oldCapacity.map(({ id }) => id);
-            const epsilon = 1e-10; // A small tolerance value
+            const epsilon = 1e-10;
             const areEqual = Math.abs(totalOldCapacity - capacity) < epsilon;
+
             if (areEqual) {
               await prisma.location.updateMany({
                 where: {
@@ -365,22 +358,23 @@ export class DrcDateService {
                 data: updateData,
               });
             } else {
-              // unassign
               const getAssignedIds =
                 await prisma.assignLocationToTruck.findMany({
                   where: { deliveryRouteCalculationDateId: id },
                   select: { locationId: true },
                 });
-              // Extract an array of ids
+
               const assignedIds = getAssignedIds.map(
                 ({ locationId }) => locationId,
               );
               const filteredIds: UnassignDto = {
                 locationIds: ids.filter((id) => assignedIds.includes(id)),
               };
+
               if (assignedIds.length > 0) {
                 await this.unassignLocationToTruck(id, filteredIds);
               }
+
               await prisma.location.deleteMany({
                 where: {
                   latitude: locationData.latitude,
@@ -389,60 +383,366 @@ export class DrcDateService {
                     locationData.deliveryRouteCalculationDateId,
                 },
               });
+
               if (numberOfSplite === 1) {
-                await prisma.location.create({
-                  data: { ...locationData, capacity: totalCapacity },
+                const createdLocation = await prisma.location.create({
+                  data: locationData,
                 });
+
+                // Update Requirements with the created locationId
+                for (const req of requirements) {
+                  await prisma.requirement.create({
+                    data: {
+                      ...req,
+                      locationId: createdLocation.id,
+                    },
+                  });
+                }
               } else if (numberOfSplite > 1) {
                 let remainingCapacity = totalCapacity;
 
                 for (let i = 0; i < numberOfSplite; i++) {
-                  // Determine the capacity for the current split
                   const currentCapacity = Math.min(
                     remainingCapacity,
                     truckSize.containerCubic,
                   );
 
-                  // Reduce the remaining capacity by the current split's capacity
                   remainingCapacity -= currentCapacity;
 
-                  await prisma.location.create({
-                    data: { ...locationData, capacity: currentCapacity },
+                  const createdLocation = await prisma.location.create({
+                    data: {
+                      ...locationData,
+                      capacity: currentCapacity,
+                    },
                   });
+
+                  // Update Requirements with the created locationId
+                  for (const req of requirements) {
+                    await prisma.requirement.create({
+                      data: {
+                        ...req,
+                        locationId: createdLocation.id,
+                      },
+                    });
+                  }
                 }
               }
             }
           } else {
             if (numberOfSplite === 1) {
-              await prisma.location.create({
-                data: { ...locationData, capacity: totalCapacity },
+              const createdLocation = await prisma.location.create({
+                data: locationData,
               });
+
+              // Update Requirements with the created locationId
+              for (const req of requirements) {
+                await prisma.requirement.create({
+                  data: {
+                    ...req,
+                    locationId: createdLocation.id,
+                  },
+                });
+              }
             } else if (numberOfSplite > 1) {
               let remainingCapacity = totalCapacity;
 
               for (let i = 0; i < numberOfSplite; i++) {
-                // Determine the capacity for the current split
                 const currentCapacity = Math.min(
                   remainingCapacity,
                   truckSize.containerCubic,
                 );
 
-                // Reduce the remaining capacity by the current split's capacity
                 remainingCapacity -= currentCapacity;
 
-                await prisma.location.create({
-                  data: { ...locationData, capacity: currentCapacity },
+                const createdLocation = await prisma.location.create({
+                  data: {
+                    ...locationData,
+                    capacity: currentCapacity,
+                  },
                 });
+
+                // Update Requirements with the created locationId
+                for (const req of requirements) {
+                  await prisma.requirement.create({
+                    data: {
+                      ...req,
+                      locationId: createdLocation.id,
+                    },
+                  });
+                }
               }
             }
           }
         }
       });
-      return 'Created successfully';
+
+      return 'Created successfull';
     } catch (error) {
       throw error;
     }
   }
+
+  // async createDrc(file: any, id: number) {
+  //   try {
+  //     const result = this.fileUploadService.handleFileUpload(file);
+  //     const jsonData = this.convertExcelToJson(result.path);
+
+  //     // Validate each DRC object
+  //     for (const drc of jsonData) {
+  //       const drcDto = plainToClass(CreateSubDrcDto, drc);
+  //       const errors = await validate(drcDto);
+
+  //       if (errors.length > 0) {
+  //         throw new HttpException(
+  //           {
+  //             message: 'Validation failed',
+  //             errors: errors
+  //               .map((err) => Object.values(err.constraints))
+  //               .flat(),
+  //           },
+  //           HttpStatus.BAD_REQUEST,
+  //         );
+  //       }
+  //     }
+  //     // Fetch all existing locations for the given deliveryRouteCalculationDateId
+  //     await this.prisma.$transaction(async (prisma) => {
+  //       const oldLocations = await prisma.location.findMany({
+  //         where: { deliveryRouteCalculationDateId: id },
+  //       });
+  //       // check to delete
+  //       const oldLocationsForCheck = await prisma.location.findMany({
+  //         where: { deliveryRouteCalculationDateId: id },
+  //         select: {
+  //           id: true,
+  //           latitude: true,
+  //           longitude: true,
+  //           deliveryRouteCalculationDateId: true,
+  //         },
+  //       });
+  //       const filteredIds = oldLocationsForCheck
+  //         .filter((oldLoc) => {
+  //           // Check if the location in oldLocationsForCheck exists in jsonData
+  //           const existsInJsonData = jsonData.some(
+  //             (newLoc) =>
+  //               newLoc.latitude === oldLoc.latitude &&
+  //               newLoc.longitude === oldLoc.longitude,
+  //           );
+
+  //           // Return true if it does NOT exist in jsonData (i.e., we want to keep it)
+  //           return !existsInJsonData;
+  //         })
+  //         .map((oldLoc) => oldLoc.id); // Extract the ids of the filtered locations
+
+  //       if (filteredIds.length > 0) {
+  //         for (const location of filteredIds) {
+  //           console.log(location + '  ' + id);
+
+  //           // Delete all related AssignLocationToTruck entries before deleting the location
+  //           await prisma.assignLocationToTruck.deleteMany({
+  //             where: {
+  //               locationId: location,
+  //               deliveryRouteCalculationDateId: id,
+  //             },
+  //           });
+
+  //           // Now delete the location
+  //           await prisma.location.delete({
+  //             where: {
+  //               id: location,
+  //             },
+  //           });
+  //         }
+  //       }
+  //       for (const direction of jsonData) {
+  //         const zone = await prisma.zone.findFirst({
+  //           where: { code: direction.zone },
+  //         });
+  //         if (!zone) {
+  //           throw new NotFoundException();
+  //         }
+  //         let truckSize: TruckSize = await prisma.truckSize.findUnique({
+  //           where: { id: 2 },
+  //         });
+  //         if (direction.truckSize) {
+  //           const IsTruckSize = await prisma.truckSize.findFirst({
+  //             where: { name: direction.truckSize },
+  //           });
+  //           if (!IsTruckSize) {
+  //             throw new NotFoundException();
+  //           }
+  //           truckSize = IsTruckSize;
+  //         }
+  //         // need to modify this
+  //         // Fetch all case sizes dynamically
+  //         const caseSizes = await prisma.caseSize.findMany();
+
+  //         if (!caseSizes || caseSizes.length === 0) {
+  //           throw new NotFoundException('No case sizes found');
+  //         }
+
+  //         // Calculate total capacity dynamically
+  //         let totalCapacity = 0;
+
+  //         caseSizes.forEach((caseSize) => {
+  //           const caseName = caseSize.name as keyof typeof direction; // Make sure the case name exists in the direction object
+  //           const caseQuantity = direction[caseName] as number; // Get the corresponding quantity from direction
+
+  //           if (caseQuantity && caseSize.caseCubic) {
+  //             totalCapacity += caseSize.caseCubic * caseQuantity;
+  //           }
+  //         });
+
+  //         const locationData = {
+  //           documentType: direction.documentType || '',
+  //           documentNumber: direction.documentNumber || '',
+  //           sla: direction.sla || '',
+  //           latitude: +direction.latitude,
+  //           longitude: +direction.longitude,
+  //           locationName: direction.locationName || '',
+  //           phone: direction.phone + '' || '',
+  //           se: direction.se || '',
+  //           homeNo: direction.homeNo || '',
+  //           streetNo: direction.streetNo || '',
+  //           village: direction.village || '',
+  //           sangkat: direction.sangkat || '',
+  //           khan: direction.khan || '',
+  //           hotSpot: direction.hotSpot || '',
+  //           direction: direction.direction || '',
+  //           area: direction.area || '',
+  //           region: direction.region || '',
+  //           division: direction.division || '',
+  //           zoneId: zone.id,
+  //           truckSizeId: truckSize?.id || null,
+  //           deliveryDate: new Date(direction.deliveryDate),
+  //           paymentTerm: direction.paymentTerm || '',
+  //           comments: direction.comments || '',
+  //           priority: direction.priority || 'LOW',
+  //           partOfDay: direction.partOfDay || 'MORNING',
+  //           capacity: totalCapacity,
+  //           deliveryRouteCalculationDateId: id,
+  //         };
+  //         const numberOfSplite = Math.ceil(
+  //           totalCapacity / truckSize.containerCubic,
+  //         );
+  //         const matchingLocation = oldLocations.find(
+  //           (loc) =>
+  //             loc.latitude === locationData.latitude &&
+  //             loc.longitude === locationData.longitude &&
+  //             loc.deliveryRouteCalculationDateId ===
+  //               locationData.deliveryRouteCalculationDateId,
+  //         );
+  //         if (matchingLocation) {
+  //           const { capacity, ...updateData } = locationData;
+  //           const oldCapacity = await prisma.location.findMany({
+  //             where: {
+  //               latitude: locationData.latitude,
+  //               longitude: locationData.longitude,
+  //               deliveryRouteCalculationDateId:
+  //                 locationData.deliveryRouteCalculationDateId,
+  //             },
+  //             select: {
+  //               capacity: true,
+  //               id: true,
+  //             },
+  //           });
+  //           // Sum the capacities
+  //           const totalOldCapacity = oldCapacity.reduce(
+  //             (total, { capacity }) => total + capacity,
+  //             0,
+  //           );
+  //           // Extract an array of ids
+  //           const ids = oldCapacity.map(({ id }) => id);
+  //           const epsilon = 1e-10; // A small tolerance value
+  //           const areEqual = Math.abs(totalOldCapacity - capacity) < epsilon;
+  //           if (areEqual) {
+  //             await prisma.location.updateMany({
+  //               where: {
+  //                 latitude: locationData.latitude,
+  //                 longitude: locationData.longitude,
+  //                 deliveryRouteCalculationDateId:
+  //                   locationData.deliveryRouteCalculationDateId,
+  //               },
+  //               data: updateData,
+  //             });
+  //           } else {
+  //             // unassign
+  //             const getAssignedIds =
+  //               await prisma.assignLocationToTruck.findMany({
+  //                 where: { deliveryRouteCalculationDateId: id },
+  //                 select: { locationId: true },
+  //               });
+  //             // Extract an array of ids
+  //             const assignedIds = getAssignedIds.map(
+  //               ({ locationId }) => locationId,
+  //             );
+  //             const filteredIds: UnassignDto = {
+  //               locationIds: ids.filter((id) => assignedIds.includes(id)),
+  //             };
+  //             if (assignedIds.length > 0) {
+  //               await this.unassignLocationToTruck(id, filteredIds);
+  //             }
+  //             await prisma.location.deleteMany({
+  //               where: {
+  //                 latitude: locationData.latitude,
+  //                 longitude: locationData.longitude,
+  //                 deliveryRouteCalculationDateId:
+  //                   locationData.deliveryRouteCalculationDateId,
+  //               },
+  //             });
+  //             if (numberOfSplite === 1) {
+  //               await prisma.location.create({
+  //                 data: { ...locationData, capacity: totalCapacity },
+  //               });
+  //             } else if (numberOfSplite > 1) {
+  //               let remainingCapacity = totalCapacity;
+
+  //               for (let i = 0; i < numberOfSplite; i++) {
+  //                 // Determine the capacity for the current split
+  //                 const currentCapacity = Math.min(
+  //                   remainingCapacity,
+  //                   truckSize.containerCubic,
+  //                 );
+
+  //                 // Reduce the remaining capacity by the current split's capacity
+  //                 remainingCapacity -= currentCapacity;
+
+  //                 await prisma.location.create({
+  //                   data: { ...locationData, capacity: currentCapacity },
+  //                 });
+  //               }
+  //             }
+  //           }
+  //         } else {
+  //           if (numberOfSplite === 1) {
+  //             await prisma.location.create({
+  //               data: { ...locationData, capacity: totalCapacity },
+  //             });
+  //           } else if (numberOfSplite > 1) {
+  //             let remainingCapacity = totalCapacity;
+
+  //             for (let i = 0; i < numberOfSplite; i++) {
+  //               // Determine the capacity for the current split
+  //               const currentCapacity = Math.min(
+  //                 remainingCapacity,
+  //                 truckSize.containerCubic,
+  //               );
+
+  //               // Reduce the remaining capacity by the current split's capacity
+  //               remainingCapacity -= currentCapacity;
+
+  //               await prisma.location.create({
+  //                 data: { ...locationData, capacity: currentCapacity },
+  //               });
+  //             }
+  //           }
+  //         }
+  //       }
+  //     });
+  //     return 'Created successfully';
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
 
   async findOne(id: number) {
     return 'hello ' + id;
@@ -950,5 +1250,68 @@ export class DrcDateService {
     } catch (error) {
       throw error;
     }
+  }
+  async deleteLocationDrc(deleteLocationDrcDto: DeleteLocationDrcDto) {
+    // Unassign location to truck
+    const { latitude, longitude, deliveryRouteCalculationDateId } =
+      deleteLocationDrcDto;
+    await this.prisma.$transaction(async (prisma) => {
+      const locations = await prisma.location.findMany({
+        where: {
+          longitude,
+          latitude,
+          deliveryRouteCalculationDateId,
+        },
+        select: {
+          id: true,
+        },
+      });
+      for (const isAssigned of locations) {
+        const assigned = await prisma.assignLocationToTruck.findFirst({
+          where: {
+            locationId: isAssigned.id,
+            deliveryRouteCalculationDateId,
+          },
+        });
+        if (assigned) {
+          await prisma.assignLocationToTruck.deleteMany({
+            where: {
+              locationId: isAssigned.id,
+              deliveryRouteCalculationDateId,
+            },
+          });
+        }
+      }
+      // Start delete
+      for (const location of locations) {
+        await prisma.location.delete({
+          where: {
+            id: location.id,
+          },
+        });
+      }
+    });
+    return 'Deleted successfully';
+  }
+
+  async updateLocationPartOfDay(
+    id: number,
+    updatePartOfDayDto: UpdatePartOfDayDto,
+  ) {
+    // start update
+    const isLocation = await this.prisma.location.findUnique({ where: { id } });
+    if (!isLocation) {
+      throw new NotFoundException();
+    }
+    // update
+    await this.prisma.location.update({
+      where: { id },
+      data: { partOfDay: updatePartOfDayDto.partOfDay },
+    });
+    return 'Updated successfully';
+  }
+
+  async getAllWarehouse() {
+    return await this.prisma.warehouse.findMany();
   }
 }
