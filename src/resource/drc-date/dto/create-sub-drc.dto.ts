@@ -115,4 +115,8 @@ export class CreateSubDrcDto {
   @IsString()
   @IsOptional()
   comments?: string;
+
+  @IsString()
+  @IsOptional()
+  licensePlate?: string;
 }
