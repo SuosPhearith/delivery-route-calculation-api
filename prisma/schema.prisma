@@ -119,14 +119,16 @@ model Fuel {
 }
 
 model TruckSize {
-  id              Int        @id @default(autoincrement())
-  name            String     @unique
+  id              Int          @id @default(autoincrement())
+  name            String       @unique
   containerLenght Float
   containerWidth  Float
   containerHeight Float
   containerCubic  Float
   Truck           Truck[]
   Location        Location[]
+  AutoAssign      AutoAssign[]
+  AutoTruck       AutoTruck[]
 }
 
 model CaseSize {
@@ -167,6 +169,7 @@ model Truck {
   TruckAssistant       TruckAssistant[]
   TruckDriver          TruckDriver[]
   TruckByDate          TruckByDate[]
+  AutoTruck            AutoTruck[]
 }
 
 model TruckAssistant {
@@ -202,6 +205,8 @@ model Zone {
   Truck             Truck[]
   officerControllId Int?
   Location          Location[]
+  AutoAssign        AutoAssign[]
+  AutoTruck         AutoTruck[]
 }
 
 model OfficerControll {
@@ -221,10 +226,11 @@ model Warehouse {
 }
 
 model TruckOwnershipType {
-  id          Int     @id @default(autoincrement())
-  name        String  @unique
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
   description String?
   Truck       Truck[]
+  AutoTruck   AutoTruck[]
 }
 
 model GroupDirection {
@@ -254,6 +260,8 @@ model DeliveryRouteCalculationDate {
   Location              Location[]
   TruckByDate           TruckByDate[]
   AssignLocationToTruck AssignLocationToTruck[]
+  AutoAssign            AutoAssign[]
+  AutoTruck             AutoTruck[]
 }
 
 enum Priority {
@@ -300,6 +308,7 @@ model Location {
   deliveryDate                   DateTime
   paymentTerm                    String?
   comments                       String?
+  flag                           String?
   priority                       Priority
   partOfDay                      PartOfDay
   Requirement                    Requirement[]
@@ -308,6 +317,7 @@ model Location {
   isAssign                       Boolean                      @default(false)
   deliveryRouteCalculationDateId Int
   AssignLocationToTruck          AssignLocationToTruck[]
+  AutoAssign                     AutoAssign[]
 }
 
 model Requirement {
@@ -341,4 +351,33 @@ model AssignLocationToTruck {
   deliveryRouteCalculationDateId Int
 
   @@unique([locationId, deliveryRouteCalculationDateId]) // Unique composite index for locationId and deliveryRouteCalculationDateId
+}
+
+model AutoAssign {
+  id                             Int                          @id @default(autoincrement())
+  deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id], onDelete: Cascade)
+  deliveryRouteCalculationDateId Int
+  zone                           Zone                         @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  zoneId                         Int
+  truckSize                      TruckSize                    @relation(fields: [truckSizeId], references: [id], onDelete: Cascade)
+  truckSizeId                    Int
+  partOfDay                      PartOfDay
+  priority                       Priority
+  location                       Location                     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId                     Int
+  isAssign                       Boolean                      @default(false)
+}
+
+model AutoTruck {
+  id                             Int                          @id @default(autoincrement())
+  deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id])
+  truckOwnershipType             TruckOwnershipType           @relation(fields: [truckOwnershipTypeId], references: [id])
+  zone                           Zone                         @relation(fields: [zoneId], references: [id])
+  truckSize                      TruckSize                    @relation(fields: [truckSizeId], references: [id])
+  truck                          Truck                        @relation(fields: [truckId], references: [id])
+  deliveryRouteCalculationDateId Int
+  truckOwnershipTypeId           Int
+  zoneId                         Int
+  truckSizeId                    Int
+  truckId                        Int
 }

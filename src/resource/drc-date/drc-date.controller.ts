@@ -10,6 +10,7 @@ import {
   UploadedFile,
   ParseIntPipe,
   Patch,
+  Res,
 } from '@nestjs/common';
 import { DrcDateService } from './drc-date.service';
 import { CreateDrcDateDto } from './dto/create-drc-date.dto';
@@ -23,6 +24,7 @@ import { CreateTruckByDateDto } from './dto/create-truck-by-date.dto';
 import { UnassignDto } from './dto/unassign-drc.dto';
 import { DeleteLocationDrcDto } from './dto/delete-location-drc.dto';
 import { UpdatePartOfDayDto } from './dto/update-part-of-day.dto';
+import { Response } from 'express';
 
 @Controller('api/v1/drc-date')
 export class DrcDateController {
@@ -124,6 +126,11 @@ export class DrcDateController {
     );
   }
 
+  @Post('auto-assign-locations-truck/route/:id')
+  async autoAssign(@Param('id', ParseIntPipe) id: number) {
+    return await this.drcDateService.autoAssign(+id);
+  }
+
   @Delete('unassign-locations-truck/route/:id')
   async unassignLocationToTruck(
     @Body() unassignDto: UnassignDto,
@@ -148,5 +155,31 @@ export class DrcDateController {
   @Get('get-all-warehouses/route')
   async getAllWarehouse() {
     return this.drcDateService.getAllWarehouse();
+  }
+
+  @Get('download-excel-file/:id')
+  async exportExcelFile(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    try {
+      const jsonData = await this.drcDateService.exportExcelFile(+id);
+
+      // Convert JSON to Excel buffer
+      const buffer = this.drcDateService.convertJsonToExcel(jsonData);
+
+      // Set response headers to prompt file download
+      res.setHeader('Content-Disposition', 'attachment; filename=data.xlsx');
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+
+      // Send the Excel file
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error exporting Excel file:', error);
+      res.status(500).send('Failed to generate Excel file');
+    }
   }
 }
