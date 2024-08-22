@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Location" ALTER COLUMN "deliveryDate" DROP NOT NULL,
+ALTER COLUMN "deliveryDate" SET DATA TYPE TEXT,
+ALTER COLUMN "uploaddTime" SET DATA TYPE TEXT;

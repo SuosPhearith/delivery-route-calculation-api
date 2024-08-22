@@ -1,3 +1,4 @@
+import { PartOfDay, Priority } from '@prisma/client';
 import { IsLatitude, IsLongitude, IsNotEmpty, IsNumber } from 'class-validator';
 
 export class DeleteLocationDrcDto {
@@ -12,4 +13,10 @@ export class DeleteLocationDrcDto {
   @IsNotEmpty()
   @IsLongitude()
   longitude: number;
+
+  @IsNotEmpty()
+  partOfDay: PartOfDay;
+
+  @IsNotEmpty()
+  priority: Priority;
 }

@@ -1,3 +1,4 @@
+import { Flag, PartOfDay, Priority } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 
@@ -6,16 +7,9 @@ export class CreateSubDrcDto {
   @IsOptional()
   paymentTerm?: string;
 
-  //   @IsString()
+  @IsString()
+  @IsOptional()
   deliveryDate: string;
-
-  @Transform(({ value }) => parseInt(value))
-  //   @IsNumber()
-  Vital500ml: number;
-
-  @Transform(({ value }) => parseInt(value))
-  @IsNumber()
-  Meechiet: number;
 
   @IsString()
   @IsOptional()
@@ -43,11 +37,11 @@ export class CreateSubDrcDto {
 
   @IsString()
   @IsOptional()
-  partOfDay?: string;
+  partOfDay?: PartOfDay;
 
   @IsString()
   @IsOptional()
-  priority?: string;
+  priority?: Priority;
 
   @IsString()
   @IsOptional()
@@ -70,7 +64,7 @@ export class CreateSubDrcDto {
 
   @IsString()
   @IsOptional()
-  uploadedTime?: string;
+  uploaddTime?: string;
 
   @IsString()
   @IsOptional()
@@ -119,4 +113,12 @@ export class CreateSubDrcDto {
   @IsString()
   @IsOptional()
   licensePlate?: string;
+
+  @IsString()
+  @IsOptional()
+  flag?: Flag;
+
+  @IsString()
+  @IsOptional()
+  code?: string;
 }

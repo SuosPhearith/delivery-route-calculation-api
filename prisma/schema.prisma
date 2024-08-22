@@ -279,6 +279,12 @@ enum PartOfDay {
   NIGHT //9pm - 5am
 }
 
+enum Flag {
+  INF // information_change
+  CAP // capacity_change
+  DEL // delete
+}
+
 model Location {
   id                             Int                          @id @default(autoincrement())
   zone                           Zone?                        @relation(fields: [zoneId], references: [id], onDelete: SetNull)
@@ -287,7 +293,7 @@ model Location {
   documentNumber                 String?
   documentDate                   String?
   sla                            String?
-  uploaddTime                    DateTime?
+  uploaddTime                    String?
   latitude                       Float
   longitude                      Float
   locationName                   String
@@ -305,10 +311,12 @@ model Location {
   division                       String?
   zoneId                         Int?
   truckSizeId                    Int?
-  deliveryDate                   DateTime
+  deliveryDate                   String?
   paymentTerm                    String?
   comments                       String?
-  flag                           String?
+  flag                           Flag?
+  code                           String?                      @unique @default(uuid())
+  isSplit                        Boolean?                     @default(false)
   priority                       Priority
   partOfDay                      PartOfDay
   Requirement                    Requirement[]

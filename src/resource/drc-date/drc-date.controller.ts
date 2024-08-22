@@ -157,6 +157,11 @@ export class DrcDateController {
     return this.drcDateService.getAllWarehouse();
   }
 
+  @Get('get-all-case-name/route')
+  async getAllCaseNames() {
+    return this.drcDateService.getAllCaseNames();
+  }
+
   @Get('download-excel-file/:id')
   async exportExcelFile(
     @Param('id', ParseIntPipe) id: number,
@@ -181,5 +186,26 @@ export class DrcDateController {
       console.error('Error exporting Excel file:', error);
       res.status(500).send('Failed to generate Excel file');
     }
+  }
+  @Post('create-single-location/route/:id')
+  async createNewLocation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: any,
+  ) {
+    return await this.drcDateService.createNewLocation(+id, data);
+  }
+  @Patch('update-single-location/route/:id')
+  async updateSingleLocationInf(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: any,
+  ) {
+    return await this.drcDateService.updateSingleLocationInf(+id, data);
+  }
+  @Patch('update-cap-single-location/route/:id')
+  async updateCapNewLocation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: any,
+  ) {
+    return await this.drcDateService.updateCapNewLocation(+id, data);
   }
 }
