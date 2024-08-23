@@ -169,6 +169,8 @@ export class DrcDateController {
   ) {
     try {
       const jsonData = await this.drcDateService.exportExcelFile(+id);
+      // console.log(jsonData);
+      // return;
 
       // Convert JSON to Excel buffer
       const buffer = this.drcDateService.convertJsonToExcel(jsonData);

@@ -3051,7 +3051,7 @@ export class DrcDateService {
       throw new Error('Auto-assignment failed.');
     }
   }
-
+  // rith1
   async exportExcelFile(id: number): Promise<any[]> {
     const response = await this.prisma.assignLocationToTruck.findMany({
       where: { deliveryRouteCalculationDateId: id },
@@ -3076,6 +3076,8 @@ export class DrcDateService {
     });
 
     const caseSizes = await this.prisma.caseSize.findMany();
+
+    // return response;
 
     const formattedData = response.map((item) => {
       const requirementsMap = caseSizes.reduce(
