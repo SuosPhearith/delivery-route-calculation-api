@@ -210,4 +210,15 @@ export class DrcDateController {
   ) {
     return await this.drcDateService.updateCapNewLocation(+id, data);
   }
+  @Patch('update-single-location-split/route/:id')
+  async updateSingleLocation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: any,
+  ) {
+    return await this.drcDateService.updateSingleLocation(+id, data);
+  }
+  @Delete('delete-single-location/route/:id')
+  async deleteSingleLocation(@Param('id', ParseIntPipe) id: number) {
+    return await this.drcDateService.deleteSingleLocation(+id);
+  }
 }

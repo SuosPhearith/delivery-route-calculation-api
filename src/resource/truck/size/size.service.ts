@@ -170,4 +170,26 @@ export class SizeService {
       throw error;
     }
   }
+
+  // Default Truck size
+  async defaultTruck(id: number) {
+    try {
+      // validate
+      const isTruckSize = await this.prisma.truckSize.findUnique({
+        where: { id },
+      });
+      if (!isTruckSize) {
+        throw new NotFoundException();
+      }
+      // start update
+      await this.prisma.truckSize.updateMany({ data: { default: false } });
+      await this.prisma.truckSize.update({
+        where: { id: isTruckSize.id },
+        data: { default: true },
+      });
+      return 'updated successfully';
+    } catch (error) {
+      throw error;
+    }
+  }
 }

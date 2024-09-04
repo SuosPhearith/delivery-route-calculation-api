@@ -51,6 +51,11 @@ export class SizeController {
     return this.sizeService.update(+id, updateSizeDto);
   }
 
+  @Patch(':id/set-default-truck')
+  async defaultTruck(@Param('id', ParseIntPipe) id: number) {
+    return this.sizeService.defaultTruck(+id);
+  }
+
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.sizeService.remove(+id);

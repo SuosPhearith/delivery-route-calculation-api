@@ -125,6 +125,7 @@ model TruckSize {
   containerWidth  Float
   containerHeight Float
   containerCubic  Float
+  default         Boolean?     @default(false)
   Truck           Truck[]
   Location        Location[]
   AutoAssign      AutoAssign[]
@@ -252,6 +253,7 @@ model Direction {
   type             String
   groupDirection   GroupDirection @relation(fields: [groupDirectionId], references: [id], onDelete: Cascade)
   groupDirectionId Int
+  createdAt        DateTime?      @default(now())
 }
 
 model DeliveryRouteCalculationDate {
@@ -262,6 +264,7 @@ model DeliveryRouteCalculationDate {
   AssignLocationToTruck AssignLocationToTruck[]
   AutoAssign            AutoAssign[]
   AutoTruck             AutoTruck[]
+  createdAt             DateTime?               @default(now())
 }
 
 enum Priority {
@@ -326,15 +329,17 @@ model Location {
   deliveryRouteCalculationDateId Int
   AssignLocationToTruck          AssignLocationToTruck[]
   AutoAssign                     AutoAssign[]
+  createdAt                      DateTime?                    @default(now())
 }
 
 model Requirement {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   amount     Int
-  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  location   Location  @relation(fields: [locationId], references: [id], onDelete: Cascade)
   locationId Int
-  caseSize   CaseSize @relation(fields: [caseSizeId], references: [id], onDelete: Cascade)
+  caseSize   CaseSize  @relation(fields: [caseSizeId], references: [id], onDelete: Cascade)
   caseSizeId Int
+  createdAt  DateTime? @default(now())
 }
 
 model TruckByDate {
@@ -347,6 +352,7 @@ model TruckByDate {
   deliveryRouteCalculationDate   DeliveryRouteCalculationDate? @relation(fields: [deliveryRouteCalculationDateId], references: [id], onDelete: SetNull)
   deliveryRouteCalculationDateId Int?
   AssignLocationToTruck          AssignLocationToTruck[]
+  createdAt                      DateTime?                     @default(now())
 }
 
 model AssignLocationToTruck {
@@ -357,6 +363,7 @@ model AssignLocationToTruck {
   truckByDateId                  Int
   deliveryRouteCalculationDate   DeliveryRouteCalculationDate @relation(fields: [deliveryRouteCalculationDateId], references: [id], onDelete: Cascade)
   deliveryRouteCalculationDateId Int
+  createdAt                      DateTime?                    @default(now())
 
   @@unique([locationId, deliveryRouteCalculationDateId]) // Unique composite index for locationId and deliveryRouteCalculationDateId
 }
@@ -374,6 +381,7 @@ model AutoAssign {
   location                       Location                     @relation(fields: [locationId], references: [id], onDelete: Cascade)
   locationId                     Int
   isAssign                       Boolean                      @default(false)
+  createdAt                      DateTime?                    @default(now())
 }
 
 model AutoTruck {
@@ -388,4 +396,5 @@ model AutoTruck {
   zoneId                         Int
   truckSizeId                    Int
   truckId                        Int
+  createdAt                      DateTime?                    @default(now())
 }

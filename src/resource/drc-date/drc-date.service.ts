@@ -220,8 +220,8 @@ export class DrcDateService {
       }
 
       // Fetch the default truck size (id = 2)
-      let truckSize = await prisma.truckSize.findUnique({
-        where: { id: 2 },
+      let truckSize = await prisma.truckSize.findFirst({
+        where: { default: true },
       });
 
       // If a truck size is provided, override the default truck size
@@ -473,8 +473,8 @@ export class DrcDateService {
       }
 
       // Default truck size with ID 2
-      let truckSize: TruckSize = await prisma.truckSize.findUnique({
-        where: { id: 2 },
+      let truckSize: TruckSize = await prisma.truckSize.findFirst({
+        where: { default: true },
       });
 
       // Override truck size if provided in direction data
@@ -633,7 +633,9 @@ export class DrcDateService {
       }
 
       // Set default truck size, and override if specified in the direction data
-      let truckSize = await prisma.truckSize.findUnique({ where: { id: 2 } });
+      let truckSize = await prisma.truckSize.findFirst({
+        where: { default: true },
+      });
 
       if (direction.truckSize) {
         const specifiedTruckSize = await prisma.truckSize.findFirst({
@@ -2097,158 +2099,6 @@ export class DrcDateService {
 
     return transformedResponse;
   }
-
-  // async findAllLocations(params: {
-  //   deliveryRouteCalculationDateId: number;
-  //   zoneId?: number;
-  //   truckSizeId?: number;
-  //   partOfDay?: PartOfDay;
-  //   priority?: Priority;
-  //   capacity?: number;
-  //   query?: string;
-  //   isAssign?: string;
-  //   truckByDateId?: string;
-  // }): Promise<Location[]> {
-  //   const {
-  //     deliveryRouteCalculationDateId,
-  //     zoneId,
-  //     truckSizeId,
-  //     partOfDay,
-  //     priority,
-  //     capacity,
-  //     query,
-  //     isAssign,
-  //     truckByDateId,
-  //   } = params;
-
-  //   if (!deliveryRouteCalculationDateId) {
-  //     throw new BadRequestException();
-  //   }
-
-  //   const priorityOrder = {
-  //     CRITICAL: 1,
-  //     HIGH: 2,
-  //     MEDIUM: 3,
-  //     LOW: 4,
-  //     TRIVIAL: 5,
-  //   };
-
-  //   const partOfDayOrder = {
-  //     MORNING: 1,
-  //     AFTERNOON: 2,
-  //     EVENING: 3,
-  //     NIGHT: 4,
-  //   };
-
-  //   if (truckByDateId) {
-  //     const locations = await this.prisma.location.findMany({
-  //       where: {
-  //         AssignLocationToTruck: {
-  //           some: {
-  //             truckByDateId: +truckByDateId,
-  //           },
-  //         },
-  //       },
-  //       include: {
-  //         zone: true,
-  //         truckSize: true,
-  //         Requirement: {
-  //           include: {
-  //             caseSize: true,
-  //           },
-  //         },
-  //       },
-  //     });
-
-  //     const updatedLocations = locations.map((location) => ({
-  //       ...location,
-  //       isAssign: true,
-  //     }));
-
-  //     // Sort the locations based on partOfDay and priority
-  //     updatedLocations.sort((a, b) => {
-  //       const partOfDayComparison =
-  //         partOfDayOrder[a.partOfDay] - partOfDayOrder[b.partOfDay];
-  //       if (partOfDayComparison !== 0) return partOfDayComparison;
-
-  //       return priorityOrder[a.priority] - priorityOrder[b.priority];
-  //     });
-
-  //     return updatedLocations;
-  //   } else {
-  //     const response = await this.prisma.location.findMany({
-  //       where: {
-  //         deliveryRouteCalculationDateId: +deliveryRouteCalculationDateId,
-  //         ...(zoneId && { zoneId: +zoneId }),
-  //         ...(truckSizeId && { truckSizeId: +truckSizeId }),
-  //         ...(partOfDay && { partOfDay }),
-  //         ...(priority && { priority }),
-  //         ...(capacity && { capacity: { lte: +capacity } }),
-  //         OR: query
-  //           ? [
-  //               {
-  //                 phone: {
-  //                   contains: query,
-  //                   mode: 'insensitive',
-  //                 },
-  //               },
-  //               {
-  //                 se: {
-  //                   contains: query,
-  //                   mode: 'insensitive',
-  //                 },
-  //               },
-  //             ]
-  //           : undefined,
-  //       },
-  //       include: {
-  //         zone: true,
-  //         truckSize: true,
-  //         Requirement: {
-  //           include: {
-  //             caseSize: true,
-  //           },
-  //         },
-  //       },
-  //     });
-
-  //     const AssignLocationToTruckData =
-  //       await this.prisma.assignLocationToTruck.findMany({
-  //         where: {
-  //           deliveryRouteCalculationDateId: +deliveryRouteCalculationDateId,
-  //         },
-  //       });
-
-  //     const assignedLocationIds = new Set(
-  //       AssignLocationToTruckData.map((item) => item.locationId),
-  //     );
-
-  //     const updatedResponse = response.map((location) => {
-  //       return {
-  //         ...location,
-  //         isAssign: assignedLocationIds.has(location.id),
-  //       };
-  //     });
-
-  //     // Sort the locations based on partOfDay and priority
-  //     updatedResponse.sort((a, b) => {
-  //       const partOfDayComparison =
-  //         partOfDayOrder[a.partOfDay] - partOfDayOrder[b.partOfDay];
-  //       if (partOfDayComparison !== 0) return partOfDayComparison;
-
-  //       return priorityOrder[a.priority] - priorityOrder[b.priority];
-  //     });
-
-  //     if (isAssign !== undefined) {
-  //       const isAssignValue = isAssign === 'true';
-  //       return updatedResponse.filter(
-  //         (location) => location.isAssign === isAssignValue,
-  //       );
-  //     }
-
-  //     return updatedResponse;
-  //   }
-  // }
   async findAllLocations(params: {
     deliveryRouteCalculationDateId: number;
     zoneId?: number;
@@ -3174,5 +3024,107 @@ export class DrcDateService {
       select: { name: true },
     });
     return cases;
+  }
+
+  async deleteSingleLocation(id: number) {
+    try {
+      // validation
+      const location = await this.prisma.location.findUnique({ where: { id } });
+      if (!location) {
+        throw new NotFoundException();
+      }
+      // unassign
+      await this.prisma.assignLocationToTruck.deleteMany({
+        where: { locationId: location.id },
+      });
+      // start delete
+      await this.prisma.location.delete({ where: { id: location.id } });
+      return {
+        message: 'Deleted successfully',
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+  async updateSingleLocation(id: number, data: any) {
+    try {
+      // find location id by code
+      const locationId = await this.prisma.location.findUnique({
+        where: { code: data.code },
+        select: { id: true },
+      });
+      // get assign tuck
+      const assigned = await this.prisma.assignLocationToTruck.findFirst({
+        where: {
+          locationId: locationId.id,
+          deliveryRouteCalculationDateId: id,
+        },
+        include: {
+          truckByDate: {
+            include: {
+              truck: {
+                select: {
+                  licensePlate: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      // change zoneId to zoneCode
+      const zoneId = data.zoneId;
+      const truckSizeId = data.truckSizeId;
+      if (!zoneId || !truckSizeId) {
+        throw new NotFoundException();
+      }
+      const zone = await this.prisma.zone.findUnique({
+        where: { id: +zoneId },
+        select: { code: true },
+      });
+      const truckSize = await this.prisma.truckSize.findUnique({
+        where: { id: +truckSizeId },
+        select: { name: true },
+      });
+      let newData = [
+        {
+          ...data,
+          zone: zone.code,
+          truckSize: truckSize.name,
+          code: undefined,
+        },
+      ];
+      if (assigned?.truckByDate?.truck?.licensePlate) {
+        newData = [
+          {
+            ...data,
+            zone: zone.code,
+            truckSize: truckSize.name,
+            licensePlate: assigned.truckByDate.truck.licensePlate,
+            code: undefined,
+          },
+        ];
+      }
+
+      await this.prisma.$transaction(async (prisma: PrismaClient) => {
+        // delete old location
+        const location = await prisma.location.findUnique({
+          where: { id: locationId.id },
+        });
+        if (!location) {
+          throw new NotFoundException();
+        }
+        // unassign
+        await prisma.assignLocationToTruck.deleteMany({
+          where: { locationId: location.id },
+        });
+        // start delete
+        await prisma.location.delete({ where: { id: location.id } });
+        // create new
+        await this.handleNewLocations(newData, id, prisma);
+      });
+      return 'update succesfully';
+    } catch (error) {
+      throw error;
+    }
   }
 }
