@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { FuelService } from './fuel.service';
 import { FuelController } from './fuel.controller';
-import { AuthModule } from 'src/auth/auth.module';
+import { KeycloakModule } from 'src/keycloak/keycloak.module';
 
 @Module({
   controllers: [FuelController],
   providers: [FuelService],
-  imports: [AuthModule],
+  imports: [KeycloakModule],
 })
 export class FuelModule {}

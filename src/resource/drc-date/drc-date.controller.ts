@@ -11,6 +11,7 @@ import {
   ParseIntPipe,
   Patch,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { DrcDateService } from './drc-date.service';
 import { CreateDrcDateDto } from './dto/create-drc-date.dto';
@@ -19,23 +20,35 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/config/multer.config';
 import { FileExcelPipe } from 'src/file/validation/file-excel.pipe';
 import { File as MulterFile } from 'multer';
-import { PartOfDay, Priority, TruckStatus } from '@prisma/client';
+import {
+  KeycloakAccountRole,
+  PartOfDay,
+  Priority,
+  TruckStatus,
+} from '@prisma/client';
 import { CreateTruckByDateDto } from './dto/create-truck-by-date.dto';
 import { UnassignDto } from './dto/unassign-drc.dto';
 import { DeleteLocationDrcDto } from './dto/delete-location-drc.dto';
 import { UpdatePartOfDayDto } from './dto/update-part-of-day.dto';
 import { Response } from 'express';
+import { KeycloakRoles } from 'src/keycloak/decorators/keycloak-roles/keycloak-roles.decorator';
+import { KeycloakAuthenticationGuard } from 'src/keycloak/guards/keycloak-authentication/keycloak-authentication.guard';
+import { KeycloakAuthorizationGuard } from 'src/keycloak/guards/keycloak-authorization/keycloak-authorization.guard';
 
 @Controller('api/v1/drc-date')
 export class DrcDateController {
   constructor(private readonly drcDateService: DrcDateService) {}
 
   @Post()
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async create(@Body() createDrcDateDto: CreateDrcDateDto) {
     return await this.drcDateService.create(createDrcDateDto);
   }
 
   @Post('create-drc/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   @UseInterceptors(FileInterceptor('file', multerConfig))
   async createDrc(
     @UploadedFile(FileExcelPipe) file: MulterFile,
@@ -45,27 +58,37 @@ export class DrcDateController {
   }
 
   @Get()
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async findAll(@Query() searchDto: SearchDto) {
     const { query, page, limit } = searchDto;
     return this.drcDateService.findAll(query, page, limit);
   }
 
   @Get(':id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.drcDateService.findOne(id);
   }
 
   @Get('get-all-zones/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async getAllZones(@Param('id', ParseIntPipe) id: number) {
     return this.drcDateService.getAllZones(id);
   }
 
   @Delete(':id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async remove(@Param('id') id: string) {
     return this.drcDateService.remove(+id);
   }
 
   @Get('get-all-trucks/route')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async getFilteredTrucks(
     @Query('deliveryRouteCalculationDateId')
     deliveryRouteCalculationDateId?: number,
@@ -90,6 +113,8 @@ export class DrcDateController {
   }
 
   @Get('get-all-locations/route')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async findAllLocations(
     @Query('deliveryRouteCalculationDateId')
     deliveryRouteCalculationDateId?: number,
@@ -116,6 +141,8 @@ export class DrcDateController {
   }
 
   @Post('assign-locations-truck/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async assignLocationToTruck(
     @Body() createTruckByDateDto: CreateTruckByDateDto,
     @Param('id', ParseIntPipe) id: number,
@@ -127,11 +154,15 @@ export class DrcDateController {
   }
 
   @Post('auto-assign-locations-truck/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async autoAssign(@Param('id', ParseIntPipe) id: number) {
     return await this.drcDateService.autoAssign(+id);
   }
 
   @Delete('unassign-locations-truck/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async unassignLocationToTruck(
     @Body() unassignDto: UnassignDto,
     @Param('id', ParseIntPipe) id: number,
@@ -140,11 +171,15 @@ export class DrcDateController {
   }
 
   @Delete('delete-locations-drc/route')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async deleteLocationDrc(@Body() deleteLocationDrcDto: DeleteLocationDrcDto) {
     return await this.drcDateService.deleteLocationDrc(deleteLocationDrcDto);
   }
 
   @Patch('update-location-part-of-day/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async updateLocationPartOfDay(
     @Param('id', ParseIntPipe) id: number,
     @Body() updatePartOfDayDto: UpdatePartOfDayDto,
@@ -153,16 +188,22 @@ export class DrcDateController {
   }
 
   @Get('get-all-warehouses/route')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async getAllWarehouse() {
     return this.drcDateService.getAllWarehouse();
   }
 
   @Get('get-all-case-name/route')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async getAllCaseNames() {
     return this.drcDateService.getAllCaseNames();
   }
 
   @Get('download-excel-file/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async exportExcelFile(
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response,
@@ -188,6 +229,8 @@ export class DrcDateController {
     }
   }
   @Post('create-single-location/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async createNewLocation(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: any,
@@ -195,6 +238,8 @@ export class DrcDateController {
     return await this.drcDateService.createNewLocation(+id, data);
   }
   @Patch('update-single-location/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async updateSingleLocationInf(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: any,
@@ -209,6 +254,8 @@ export class DrcDateController {
     return await this.drcDateService.updateCapNewLocation(+id, data);
   }
   @Patch('update-single-location-split/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async updateSingleLocation(
     @Param('id', ParseIntPipe) id: number,
     @Body() data: any,
@@ -216,6 +263,8 @@ export class DrcDateController {
     return await this.drcDateService.updateSingleLocation(+id, data);
   }
   @Delete('delete-single-location/route/:id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async deleteSingleLocation(@Param('id', ParseIntPipe) id: number) {
     return await this.drcDateService.deleteSingleLocation(+id);
   }

@@ -39,11 +39,15 @@ export class SizeController {
   }
 
   @Get(':id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.sizeService.findOne(+id);
   }
 
   @Patch(':id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateSizeDto: UpdateSizeDto,
@@ -52,11 +56,15 @@ export class SizeController {
   }
 
   @Patch(':id/set-default-truck')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async defaultTruck(@Param('id', ParseIntPipe) id: number) {
     return this.sizeService.defaultTruck(+id);
   }
 
   @Delete(':id')
+  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.sizeService.remove(+id);
   }
