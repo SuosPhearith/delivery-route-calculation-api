@@ -639,6 +639,28 @@ export class TruckService {
       throw error;
     }
   }
+  async updateStatus(id: number): Promise<ResponseCreateOrUpdateDTO> {
+    // Validate id
+    const isTruck = await this.prisma.truck.findUnique({ where: { id } });
+    if (!isTruck) {
+      throw new BadRequestException('Id not found');
+    }
+    // Check current status
+    let newStatus: TruckStatus;
+    isTruck.status === 'AVAILABLE'
+      ? (newStatus = TruckStatus.MAINTENANCE)
+      : (newStatus = TruckStatus.AVAILABLE);
+    // Start update
+    const updatedTruck = await this.prisma.truck.update({
+      where: { id: isTruck.id },
+      data: { status: newStatus },
+    });
+    return {
+      data: updatedTruck,
+      statusCode: HttpStatus.OK,
+      message: 'Updated successfully',
+    };
+  }
 }
 
 // DTO used for transforming select data

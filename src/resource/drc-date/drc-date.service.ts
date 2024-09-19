@@ -61,6 +61,9 @@ export class DrcDateService {
         include: {
           truckSize: true,
         },
+        where: {
+          status: TruckStatus.AVAILABLE,
+        },
       });
 
       // Create TruckByDate entries for each truck
@@ -171,6 +174,7 @@ export class DrcDateService {
       const result = this.fileUploadService.handleFileUpload(file);
       const jsonData: CreateSubDrcDto[] = this.convertExcelToJson(result.path);
 
+      let index = 0;
       // Validate each DRC object
       for (const drc of jsonData) {
         const drcDto = plainToClass(CreateSubDrcDto, drc);
@@ -179,7 +183,7 @@ export class DrcDateService {
         if (errors.length > 0) {
           throw new HttpException(
             {
-              message: 'Validation failed',
+              message: `Please check your input data in excel at line ${index + 2}`,
               errors: errors
                 .map((err) => Object.values(err.constraints))
                 .flat(),
@@ -187,6 +191,7 @@ export class DrcDateService {
             HttpStatus.BAD_REQUEST,
           );
         }
+        index++;
       }
       // start create
       await this.prisma.$transaction(async (prisma: PrismaClient) => {
@@ -449,6 +454,11 @@ export class DrcDateService {
     const filteredFlagINF = jsonData.filter((item) => item.flag === Flag.INF);
 
     for (const direction of filteredFlagINF) {
+      if (!direction.code) {
+        throw new NotFoundException(
+          `In locationName: ${direction.locationName} Cannot flag INF when Code is null`,
+        );
+      }
       // prevent update truck size
       const location = await this.prisma.location.findUnique({
         where: { code: direction.code },
@@ -573,6 +583,12 @@ export class DrcDateService {
     const filteredFlagCAP = jsonData.filter((item) => item.flag === Flag.CAP);
 
     for (const direction of filteredFlagCAP) {
+      // check it contain code
+      if (!direction.code) {
+        throw new NotFoundException(
+          `In locationName: ${direction.locationName} Cannot flag CAP when Code is null`,
+        );
+      }
       // Fetch the location to be deleted based on its code
       const locationDel = await prisma.location.findFirst({
         where: { code: direction.code },
@@ -807,6 +823,11 @@ export class DrcDateService {
     const filteredFlagDEL = jsonData.filter((item) => item.flag === Flag.DEL);
 
     for (const direction of filteredFlagDEL) {
+      if (!direction.code) {
+        throw new NotFoundException(
+          `In locationName: ${direction.locationName} Cannot flag DEL when Code is null`,
+        );
+      }
       // Fetch the location to be deleted based on its code
       const locationDel = await prisma.location.findFirst({
         where: { code: direction.code },
@@ -2202,6 +2223,12 @@ export class DrcDateService {
                 },
                 {
                   se: {
+                    contains: query,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  locationName: {
                     contains: query,
                     mode: 'insensitive',
                   },

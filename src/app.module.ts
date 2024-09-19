@@ -20,6 +20,7 @@ import { TruckOwnershipTypeModule } from './resource/truck/truck-ownership-type/
 import { DirectionModule } from './resource/direction/direction.module';
 import { DrcDateModule } from './resource/drc-date/drc-date.module';
 import { DashboardModule } from './resource/dashboard/dashboard.module';
+import { DriverModule as DriverModuleResource } from './resource/driver/driver.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { DashboardModule } from './resource/dashboard/dashboard.module';
     DirectionModule,
     DrcDateModule,
     DashboardModule,
+    DriverModuleResource,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, JwtService],

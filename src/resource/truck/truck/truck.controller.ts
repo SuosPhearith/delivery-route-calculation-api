@@ -99,6 +99,11 @@ export class TruckController {
     return this.truckService.update(+id, updateTruckDto);
   }
 
+  @Patch(':id/update-status')
+  async updateStatus(@Param('id', ParseIntPipe) id: number) {
+    return this.truckService.updateStatus(+id);
+  }
+
   @Patch(':id/reassign-assistant')
   async reassignAssistant(
     @Param('id', ParseIntPipe) id: number,
