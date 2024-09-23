@@ -61,9 +61,6 @@ export class DrcDateService {
         include: {
           truckSize: true,
         },
-        where: {
-          status: TruckStatus.AVAILABLE,
-        },
       });
 
       // Create TruckByDate entries for each truck
@@ -2627,222 +2624,15 @@ export class DrcDateService {
       throw new Error('Auto-assignment failed.');
     }
   }
-  // async autoAssign(deliveryRouteCalculationDateId: number) {
-  //   // await this.prisma.autoTruck.deleteMany();
-  //   // await this.prisma.autoAssign.deleteMany();
-  //   // return 'hello';
-  //   try {
-  //     // Retrieve unique values for zoneId, truckSizeId, partOfDay, and priority
-  //     const fields = await this.prisma.location.findMany({
-  //       where: { deliveryRouteCalculationDateId },
-  //       select: {
-  //         zoneId: true,
-  //         truckSizeId: true,
-  //         partOfDay: true,
-  //         priority: true,
-  //       },
-  //     });
-
-  //     const uniqueZoneIds = [...new Set(fields.map((field) => field.zoneId))];
-  //     const uniqueTruckSizeIds = [
-  //       ...new Set(fields.map((field) => field.truckSizeId)),
-  //     ];
-  //     const uniquePartOfDays = [
-  //       ...new Set(fields.map((field) => field.partOfDay)),
-  //     ];
-  //     const uniquePriorities = [
-  //       ...new Set(fields.map((field) => field.priority)),
-  //     ];
-
-  //     // Store in DB
-  //     for (const zoneId of uniqueZoneIds) {
-  //       for (const truckSizeId of uniqueTruckSizeIds) {
-  //         for (const partOfDayValue of uniquePartOfDays) {
-  //           for (const priorityValue of uniquePriorities) {
-  //             // Find locations that match these conditions
-  //             const matchingLocations = await this.prisma.location.findMany({
-  //               where: {
-  //                 deliveryRouteCalculationDateId,
-  //                 zoneId,
-  //                 truckSizeId,
-  //                 partOfDay: partOfDayValue,
-  //                 priority: priorityValue,
-  //                 isAssign: false, // ensure the location is not yet assigned
-  //               },
-  //             });
-
-  //             // Insert into autoAssign for each matching location
-  //             const autoAssignPromises = matchingLocations.map((location) =>
-  //               this.prisma.autoAssign.create({
-  //                 data: {
-  //                   deliveryRouteCalculationDateId,
-  //                   zoneId,
-  //                   truckSizeId,
-  //                   partOfDay: partOfDayValue,
-  //                   priority: priorityValue,
-  //                   locationId: location.id,
-  //                 },
-  //               }),
-  //             );
-
-  //             // Execute all insertions
-  //             await this.prisma.$transaction(autoAssignPromises);
-  //           }
-  //         }
-  //       }
-  //     }
-
-  //     // Assuming truckByDates is the result of your Prisma query
-  //     const truckByDates = await this.prisma.truckByDate.findMany({
-  //       where: { deliveryRouteCalculationDateId },
-  //       select: {
-  //         truck: {
-  //           select: {
-  //             zoneId: true,
-  //             truckSizeId: true,
-  //             truckOwnershipTypeId: true,
-  //             id: true,
-  //             // Add other fields if needed
-  //           },
-  //         },
-  //       },
-  //     });
-
-  //     // Map and retrieve unique values for each field from truckByDates
-  //     const uniqueZoneIdsTruck = [
-  //       ...new Set(truckByDates.map((entry) => entry.truck.zoneId)),
-  //     ];
-  //     const uniqueTruckSizeIdsTruck = [
-  //       ...new Set(truckByDates.map((entry) => entry.truck.truckSizeId)),
-  //     ];
-  //     const uniqueTruckOwnershipTypeIdsTruck = [
-  //       ...new Set(
-  //         truckByDates.map((entry) => entry.truck.truckOwnershipTypeId),
-  //       ),
-  //     ];
-
-  //     for (const truckOwnershipTypeId of uniqueTruckOwnershipTypeIdsTruck) {
-  //       for (const zoneId of uniqueZoneIdsTruck) {
-  //         for (const truckSizeId of uniqueTruckSizeIdsTruck) {
-  //           // Find locations that match these conditions
-  //           const matchingTrucks = await this.prisma.truckByDate.findMany({
-  //             where: {
-  //               deliveryRouteCalculationDateId,
-  //               truck: {
-  //                 zoneId,
-  //                 truckSizeId,
-  //                 truckOwnershipTypeId,
-  //               },
-  //             },
-  //             include: {
-  //               truck: true,
-  //             },
-  //           });
-
-  //           // Insert into autoAssign for each matching location
-  //           const autoAssignPromises = matchingTrucks.map((truck) =>
-  //             this.prisma.autoTruck.create({
-  //               data: {
-  //                 deliveryRouteCalculationDateId:
-  //                   deliveryRouteCalculationDateId,
-  //                 zoneId: truck.truck.zoneId,
-  //                 truckOwnershipTypeId: truck.truck.truckOwnershipTypeId,
-  //                 truckSizeId: truck.truck.truckSizeId,
-  //                 truckId: truck.truck.id,
-  //               },
-  //             }),
-  //           );
-
-  //           // Execute all insertions
-  //           await this.prisma.$transaction(autoAssignPromises);
-  //         }
-  //       }
-  //     }
-
-  //     // start assign
-  //     for (const zoneId of uniqueZoneIds) {
-  //       for (const truckSizeId of uniqueTruckSizeIds) {
-  //         for (const partOfDayValue of uniquePartOfDays) {
-  //           for (const priorityValue of uniquePriorities) {
-  //             // get locations
-  //             const locations = await this.prisma.location.findMany({
-  //               where: {
-  //                 deliveryRouteCalculationDateId,
-  //                 zoneId,
-  //                 truckSizeId,
-  //                 partOfDay: partOfDayValue,
-  //                 priority: priorityValue,
-  //                 isAssign: false,
-  //               },
-  //             });
-  //             for (const location of locations) {
-  //               const locationsLength = locations.length;
-  //               // get truck
-  //               const trucks = await this.prisma.truckByDate.findMany({
-  //                 where: {
-  //                   deliveryRouteCalculationDateId,
-  //                   truck: {
-  //                     zoneId,
-  //                     truckSizeId,
-  //                   },
-  //                 },
-  //                 include: {
-  //                   truck: true,
-  //                 },
-  //               });
-
-  //               if (trucks.length > 0 && locationsLength > 0) {
-  //                 // Loop through locations
-  //                 for (let i = 0; i < locationsLength; i++) {
-  //                   // Loop through trucks
-  //                   for (const truck of trucks) {
-  //                     const location = locations[i];
-
-  //                     // assign location
-  //                     const existingAssignment =
-  //                       await this.prisma.assignLocationToTruck.findUnique({
-  //                         where: {
-  //                           locationId_deliveryRouteCalculationDateId: {
-  //                             locationId: location.id,
-  //                             deliveryRouteCalculationDateId:
-  //                               deliveryRouteCalculationDateId,
-  //                           },
-  //                         },
-  //                       });
-
-  //                     if (!existingAssignment) {
-  //                       await this.prisma.assignLocationToTruck.create({
-  //                         data: {
-  //                           locationId: location.id,
-  //                           truckByDateId: truck.id,
-  //                           deliveryRouteCalculationDateId:
-  //                             deliveryRouteCalculationDateId,
-  //                         },
-  //                       });
-  //                     }
-  //                   }
-  //                 }
-  //               } else {
-  //                 console.log('No trucks or locations found.');
-  //               }
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-
-  //     await this.prisma.autoAssign.deleteMany();
-  //     await this.prisma.autoTruck.deleteMany();
-  //     return 'success';
-
-  //     // return resultsWithLocationIds;
-  //   } catch (error) {
-  //     console.error('Error in autoAssign:', error);
-  //     throw new Error('Auto-assignment failed.');
-  //   }
-  // }
   async autoAssign(deliveryRouteCalculationDateId: number) {
     try {
+      // validation
+      const isAssigned = await this.prisma.assignLocationToTruck.findMany({
+        where: { deliveryRouteCalculationDateId },
+      });
+      if (isAssigned.length > 0) {
+        throw new BadRequestException('U have assigned some location already!');
+      }
       // Retrieve unique values for zoneId, truckSizeId, partOfDay, and priority
       const fields = await this.prisma.location.findMany({
         where: { deliveryRouteCalculationDateId },
@@ -2889,6 +2679,7 @@ export class DrcDateService {
                     truck: {
                       zoneId,
                       truckSizeId,
+                      status: 'AVAILABLE',
                     },
                   },
                   include: {
@@ -2925,10 +2716,9 @@ export class DrcDateService {
       return 'success';
     } catch (error) {
       console.error('Error in autoAssign:', error);
-      throw new Error('Auto-assignment failed.');
+      throw error;
     }
   }
-  // rith1
   async exportExcelFile(id: number): Promise<any[]> {
     const response = await this.prisma.assignLocationToTruck.findMany({
       where: { deliveryRouteCalculationDateId: id },

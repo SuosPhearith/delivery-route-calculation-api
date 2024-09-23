@@ -202,8 +202,8 @@ export class DrcDateController {
   }
 
   @Get('download-excel-file/:id')
-  @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
-  @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
+  // @KeycloakRoles(KeycloakAccountRole.MANAGER, KeycloakAccountRole.ADMIN)
+  // @UseGuards(KeycloakAuthenticationGuard, KeycloakAuthorizationGuard)
   async exportExcelFile(
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response,
