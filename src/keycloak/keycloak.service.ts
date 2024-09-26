@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import axios from 'axios';
 import { SigninDto } from './dto/signin-keycloak.dto';
@@ -110,14 +111,7 @@ export class KeycloakService {
       // Return refreshed token response from Keycloak
       return response.data;
     } catch (error: any) {
-      // Handle errors based on status code
-      if (error?.response?.status === 401) {
-        throw new BadRequestException('Invalid email or password');
-      } else if (error?.response?.status === 400) {
-        throw new BadRequestException();
-      } else {
-        throw error;
-      }
+      throw new UnauthorizedException();
     }
   }
 
