@@ -125,8 +125,8 @@ import { PrismaClient } from '@prisma/client';
 //     if (query) {
 //       where = {
 //         OR: [
-//           { note: { contains: query, mode: 'insensitive' } }, // Search by name
-//           { group: { contains: query, mode: 'insensitive' } }, // Search by name
+//           { note: { contains: query.toLowerCase() } }, // Search by name
+//           { group: { contains: query.toLowerCase() } }, // Search by name
 //         ],
 //       };
 //     }

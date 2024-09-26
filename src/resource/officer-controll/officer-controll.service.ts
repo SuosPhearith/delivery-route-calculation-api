@@ -73,8 +73,8 @@ export class OfficerControllService {
     if (query) {
       where = {
         OR: [
-          { name: { contains: query, mode: 'insensitive' } }, // Search by name
-          { description: { contains: query, mode: 'insensitive' } }, // Search by description
+          { name: { contains: query.toLowerCase() } }, // Search by name
+          { description: { contains: query.toLowerCase() } }, // Search by description
         ],
       };
     }

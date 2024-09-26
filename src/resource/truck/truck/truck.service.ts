@@ -280,10 +280,10 @@ export class TruckService {
     if (query) {
       where = {
         OR: [
-          { licensePlate: { contains: query, mode: 'insensitive' } }, // Search by license plate
-          { model: { contains: query, mode: 'insensitive' } }, // Search
-          { manufacturer: { contains: query, mode: 'insensitive' } }, // Search
-          { functioning: { contains: query, mode: 'insensitive' } }, // Search
+          { licensePlate: { contains: query.toLowerCase() } }, // Search by license plate
+          { model: { contains: query.toLowerCase() } }, // Search
+          { manufacturer: { contains: query.toLowerCase() } }, // Search
+          { functioning: { contains: query.toLowerCase() } }, // Search
         ],
       };
     }

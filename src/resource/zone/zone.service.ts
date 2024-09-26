@@ -93,12 +93,12 @@ export class ZoneService {
     if (query) {
       where = {
         OR: [
-          { name: { contains: query, mode: 'insensitive' } }, // Search by name
-          { description: { contains: query, mode: 'insensitive' } }, // Search by description
-          { code: { contains: query, mode: 'insensitive' } }, // Search by code
+          { name: { contains: query.toLowerCase() } }, // Search by name
+          { description: { contains: query.toLowerCase() } }, // Search by description
+          { code: { contains: query.toLowerCase() } }, // Search by code
           {
             officerControll: {
-              name: { contains: query, mode: 'insensitive' }, // Search by officerControll name
+              name: { contains: query.toLowerCase() }, // Search by officerControll name
             },
           },
         ],

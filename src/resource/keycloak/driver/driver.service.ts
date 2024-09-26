@@ -27,8 +27,8 @@ export class DriverService {
       where = {
         ...where,
         OR: [
-          { name: { contains: query, mode: 'insensitive' } }, // Case-insensitive search by name
-          { email: { contains: query, mode: 'insensitive' } }, // Case-insensitive search by email
+          { name: { contains: query.toLowerCase() } },
+          { email: { contains: query.toLowerCase() } },
         ],
       };
     }

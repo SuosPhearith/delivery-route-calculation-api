@@ -2066,8 +2066,7 @@ export class DrcDateService {
           }),
           ...(licensePlate && {
             licensePlate: {
-              contains: licensePlate,
-              mode: 'insensitive', // For case-insensitive search
+              contains: licensePlate.toLowerCase(),
             },
           }),
         },
@@ -2214,20 +2213,17 @@ export class DrcDateService {
             ? [
                 {
                   phone: {
-                    contains: query,
-                    mode: 'insensitive',
+                    contains: query.toLowerCase(),
                   },
                 },
                 {
                   se: {
-                    contains: query,
-                    mode: 'insensitive',
+                    contains: query.toLowerCase(),
                   },
                 },
                 {
                   locationName: {
-                    contains: query,
-                    mode: 'insensitive',
+                    contains: query.toLowerCase(),
                   },
                 },
               ]
